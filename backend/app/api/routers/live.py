@@ -1,34 +1,73 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Any
+from sqlalchemy.future import select
+import json
 import logging
+from jose import JWTError, jwt
 
 from app.services.websocket_manager import manager
-from app.services.session import session_service
-from app.services.question import question_service
-from app.services.answer import answer_service
-# assuming get_db is available, we'll mock or define it later
-# from app.db.session import get_db
+from app.api.deps import get_db
+from app.core.config import settings
+from app.models.answer import Answer
+from app.models.user import User
+from app.models.participant import Participant
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+async def get_current_user_ws(token: str):
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        return int(user_id)
+    except JWTError:
+        return None
+
 @router.websocket("/ws/session/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: int):
+async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSession = Depends(get_db)):
+    token = websocket.query_params.get("token")
+    user_id = await get_current_user_ws(token)
+    
+    if not user_id:
+        await websocket.close(code=1008)
+        return
+
+    # Fetch participant
+    result = await db.execute(select(Participant).where(
+        Participant.session_id == session_id,
+        Participant.user_id == user_id
+    ))
+    participant = result.scalars().first()
+
+    if not participant:
+        await websocket.close(code=1008)
+        return
+
     await manager.connect(websocket, session_id)
     try:
         while True:
             data = await websocket.receive_text()
-            # Simple echo or process
-            # In a real scenario, handle json commands like {"action": "submit_answer", "question_id": 1, "answer": "A"}
-            import json
             try:
                 message = json.loads(data)
                 action = message.get("action")
                 
                 if action == "submit_answer":
-                    # logic to record answer
-                    await manager.send_personal_message(json.dumps({"status": "received", "action": action}), websocket)
+                    question_id = message.get("question_id")
+                    submitted_answer = message.get("answer")
+                    
+                    if question_id and submitted_answer:
+                        # Persist to DB
+                        answer = Answer(
+                            participant_id=participant.id,
+                            question_id=question_id,
+                            submitted_answer=submitted_answer
+                        )
+                        db.add(answer)
+                        await db.commit()
+                        
+                        await manager.send_personal_message(json.dumps({"status": "received", "action": action}), websocket)
                     
             except json.JSONDecodeError:
                 await manager.send_personal_message(json.dumps({"error": "Invalid JSON"}), websocket)
@@ -39,12 +78,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int):
 
 @router.post("/session/{session_id}/release-question/{question_id}")
 async def release_question(session_id: int, question_id: int):
-    # Retrieve question details (mocked for now, in reality use question_service)
-    # Broadcast question to all connected clients
     question_payload = {
         "action": "new_question",
         "question_id": question_id,
-        # ... other question details
     }
     await manager.broadcast_to_session(session_id, question_payload)
     return {"message": "Question released successfully"}

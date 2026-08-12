@@ -4,11 +4,28 @@ import { DashboardView } from "@/features/dashboard/DashboardView"
 import { DoctorLiveControlPage } from "@/features/live-assessment/pages/DoctorLiveControlPage"
 import { ParticipantLiveAssessmentPage } from "@/features/live-assessment/pages/ParticipantLiveAssessmentPage"
 import { ResultsPage } from "@/features/results/pages/ResultsPage"
+import { AssessmentsView } from "@/features/assessments/AssessmentsView"
+import { ParticipantsView } from "@/features/participants/ParticipantsView"
+import { LoginPage } from "@/features/auth/pages/LoginPage"
+import { SignupPage } from "@/features/auth/pages/SignupPage"
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/signup",
+    element: <SignupPage />,
+  },
+  {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <ProtectedRoute>
+        <AppShell />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -16,11 +33,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "assessments",
-        element: <div className="p-4 text-xl">Assessments Module (Coming soon)</div>,
+        element: <AssessmentsView />,
       },
       {
         path: "participants",
-        element: <div className="p-4 text-xl">Participants Module (Coming soon)</div>,
+        element: <ParticipantsView />,
       },
       {
         path: "results/:id",

@@ -1,109 +1,125 @@
-import { Activity, Users, FileText, CheckCircle } from "lucide-react"
+import { Activity, Users, FileText, CheckCircle, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
+import { DataTable } from "@/components/ui/DataTable"
+import {
+  Area,
+  AreaChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts"
 
-const metrics = [
+const chartData = [
+  { name: "Mon", participants: 120 },
+  { name: "Tue", participants: 210 },
+  { name: "Wed", participants: 180 },
+  { name: "Thu", participants: 290 },
+  { name: "Fri", participants: 340 },
+  { name: "Sat", participants: 150 },
+  { name: "Sun", participants: 400 },
+]
+
+const upcomingColumns = [
   {
-    title: "Total Participants",
-    value: "2,543",
-    change: "+12.5%",
-    trend: "up",
-    icon: Users,
+    accessorKey: "name",
+    header: "Assessment Name",
   },
   {
-    title: "Active Sessions",
-    value: "14",
-    change: "+2",
-    trend: "up",
-    icon: Activity,
+    accessorKey: "time",
+    header: "Starts In",
   },
   {
-    title: "Completed Assessments",
-    value: "1,204",
-    change: "+18.2%",
-    trend: "up",
-    icon: CheckCircle,
+    accessorKey: "candidates",
+    header: "Candidates",
   },
-  {
-    title: "Average Score",
-    value: "76.4%",
-    change: "-1.1%",
-    trend: "down",
-    icon: FileText,
-  },
+]
+
+const upcomingData = [
+  { id: "1", name: "Frontend Engineer Quiz", time: "2 hours", candidates: 45 },
+  { id: "2", name: "System Design Interview", time: "5 hours", candidates: 12 },
+  { id: "3", name: "Annual Compliance Training", time: "Tomorrow", candidates: 128 },
 ]
 
 export function DashboardView() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground mt-2">
-          Overview of your assessment platform metrics.
+          Real-time overview of your assessment platform metrics.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((metric) => (
-          <Card key={metric.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {metric.title}
-              </CardTitle>
-              <metric.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metric.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                <span
-                  className={
-                    metric.trend === "up" ? "text-emerald-500" : "text-rose-500"
-                  }
-                >
-                  {metric.change}
-                </span>{" "}
-                from last month
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+        <MetricCard title="Total Participants" value="2,543" trend="+12.5%" icon={Users} />
+        <MetricCard title="Active Sessions" value="14" trend="+2" icon={Activity} />
+        <MetricCard title="Completed Assessments" value="1,204" trend="+18.2%" icon={CheckCircle} />
+        <MetricCard title="Average Score" value="76.4%" trend="-1.1%" icon={FileText} downTrend />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="col-span-4 shadow-soft">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Participant Activity (Last 7 Days)
+            </CardTitle>
           </CardHeader>
-          <CardContent className="pl-2">
-            <div className="h-[300px] flex items-center justify-center border-2 border-dashed rounded-md m-4">
-              <span className="text-muted-foreground">Chart Placeholder</span>
+          <CardContent className="pl-0">
+            <div className="h-[300px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorParticipants" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}`} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Area type="monotone" dataKey="participants" stroke="hsl(var(--primary))" strokeWidth={3} fillOpacity={1} fill="url(#colorParticipants)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-3">
+        
+        <Card className="col-span-3 shadow-soft">
           <CardHeader>
             <CardTitle>Upcoming Assessments</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-8">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center">
-                  <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      Frontend Engineer Assessment #{i}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Starts in {i * 2} hours
-                    </p>
-                  </div>
-                  <div className="ml-auto font-medium">
-                    {i * 12} candidates
-                  </div>
-                </div>
-              ))}
-            </div>
+            <DataTable columns={upcomingColumns} data={upcomingData} searchKey="name" />
           </CardContent>
         </Card>
       </div>
     </div>
+  )
+}
+
+function MetricCard({ title, value, trend, icon: Icon, downTrend = false }: any) {
+  return (
+    <Card className="hover:shadow-glow transition-all duration-300">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">
+          <span className={downTrend ? "text-rose-500" : "text-emerald-500"}>
+            {trend}
+          </span>{" "}
+          from last month
+        </p>
+      </CardContent>
+    </Card>
   )
 }

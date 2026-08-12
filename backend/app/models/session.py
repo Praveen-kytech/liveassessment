@@ -13,6 +13,9 @@ class Session(Base, TimestampMixin):
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default='SCHEDULED')
     is_live: Mapped[bool] = mapped_column(Boolean, default=False)
+    delivery_mode: Mapped[str] = mapped_column(String(50), default='ONLINE') # IN_PERSON, ONLINE, HYBRID
+    meeting_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # ZOOM, MEET, TEAMS, CUSTOM
+    meeting_link: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
     assessment: Mapped["Assessment"] = relationship("Assessment", back_populates="sessions")
     participants: Mapped[List["Participant"]] = relationship("Participant", back_populates="session")

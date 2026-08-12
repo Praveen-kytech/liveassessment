@@ -1,13 +1,17 @@
 from typing import Optional
 from datetime import datetime
+from pydantic import BaseModel
 from .base import BaseSchema, TimestampSchema
 
-class SessionBase(BaseSchema):
+class SessionBase(BaseModel):
     assessment_id: int
     start_time: datetime
     end_time: Optional[datetime] = None
-    status: str = 'SCHEDULED'
-    is_live: bool = False
+    status: Optional[str] = 'SCHEDULED'
+    is_live: Optional[bool] = False
+    delivery_mode: Optional[str] = 'ONLINE'
+    meeting_provider: Optional[str] = None
+    meeting_link: Optional[str] = None
 
 class SessionCreate(SessionBase):
     pass

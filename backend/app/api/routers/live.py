@@ -68,6 +68,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
                         await db.commit()
                         
                         await manager.send_personal_message(json.dumps({"status": "received", "action": action}), websocket)
+                
+                elif action == "proctoring_event":
+                    event_type = message.get("type")
+                    payload = {
+                        "action": "proctoring_alert",
+                        "participant_id": participant.id,
+                        "type": event_type,
+                        "message": f"Participant {participant.id} triggered a {event_type} alert."
+                    }
+                    await manager.broadcast_to_session(session_id, payload)
                     
             except json.JSONDecodeError:
                 await manager.send_personal_message(json.dumps({"error": "Invalid JSON"}), websocket)

@@ -12,6 +12,7 @@ class SessionBase(BaseModel):
     delivery_mode: Optional[str] = 'ONLINE'
     meeting_provider: Optional[str] = None
     meeting_link: Optional[str] = None
+    host_meeting_link: Optional[str] = None
 
 class SessionCreate(SessionBase):
     pass

@@ -3,6 +3,9 @@ import os
 import base64
 import logging
 from typing import Dict, Any
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

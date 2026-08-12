@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean
+from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from .base import Base, TimestampMixin
@@ -15,7 +15,8 @@ class Session(Base, TimestampMixin):
     is_live: Mapped[bool] = mapped_column(Boolean, default=False)
     delivery_mode: Mapped[str] = mapped_column(String(50), default='ONLINE') # IN_PERSON, ONLINE, HYBRID
     meeting_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # ZOOM, MEET, TEAMS, CUSTOM
-    meeting_link: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    meeting_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    host_meeting_link: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     assessment: Mapped["Assessment"] = relationship("Assessment", back_populates="sessions")
     participants: Mapped[List["Participant"]] = relationship("Participant", back_populates="session")

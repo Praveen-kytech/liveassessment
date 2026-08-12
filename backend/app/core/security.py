@@ -39,7 +39,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             raise credentials_exception
         # In a real app, you would fetch the user from the database here using user_id
         # For simplicity, returning a dictionary representation for now
-        return {"id": int(user_id), "email": payload.get("email")}
+        return {"id": int(user_id), "email": payload.get("email"), "role_id": payload.get("role_id")}
     except JWTError:
         raise credentials_exception
 

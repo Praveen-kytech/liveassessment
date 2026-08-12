@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, MoreHorizontal, Clock } from "lucide-react"
+import { Plus, Clock, PlayCircle } from "lucide-react"
 import { DataTable } from "@/components/ui/DataTable"
 import { api } from "@/lib/api"
 
@@ -57,11 +57,35 @@ export function AssessmentsView() {
     },
     {
       id: "actions",
-      cell: () => (
-        <button className="p-2 hover:bg-muted rounded-md transition-colors">
-          <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-        </button>
-      )
+      cell: ({ row }: any) => {
+        const assessmentId = row.original.id
+        
+        const handleLaunch = async () => {
+          try {
+            const res = await api.post('/sessions/', {
+              assessment_id: assessmentId,
+              start_time: new Date().toISOString(),
+              delivery_mode: 'ONLINE',
+              meeting_provider: 'ZOOM'
+            });
+            // Redirect to control room
+            window.location.href = `/live/control/${res.data.id}`
+          } catch (e: any) {
+            console.error("Failed to launch session", e);
+            alert("Failed to create session: " + (e.response?.data?.detail || e.message));
+          }
+        }
+
+        return (
+          <button 
+            onClick={handleLaunch} 
+            title="Launch Live Session"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold rounded-md transition-colors shadow-sm"
+          >
+            <PlayCircle className="w-4 h-4" /> Launch
+          </button>
+        )
+      }
     }
   ]
 

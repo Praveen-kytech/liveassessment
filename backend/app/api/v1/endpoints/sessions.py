@@ -11,8 +11,54 @@ from app.models.participant import Participant
 from app.schemas.session import SessionResponse, SessionCreate
 from app.schemas.participant import ParticipantResponse
 from app.models.user import User
+from app.services.zoom_integration import zoom_integration_service
 
 router = APIRouter()
+
+@router.post("/", response_model=SessionResponse)
+async def create_session(
+    session_in: SessionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    # Only admins can create sessions (assuming role_id 1 is Admin)
+    if current_user.get("role_id") != 1:
+        raise HTTPException(status_code=403, detail="Not authorized to create sessions.")
+        
+    session = Session(
+        assessment_id=session_in.assessment_id,
+        start_time=session_in.start_time.replace(tzinfo=None) if session_in.start_time else None,
+        end_time=session_in.end_time.replace(tzinfo=None) if session_in.end_time else None,
+        delivery_mode=session_in.delivery_mode,
+        meeting_provider=session_in.meeting_provider
+    )
+    
+    # If it's online and Zoom is selected, create Zoom meeting
+    if session_in.delivery_mode == 'ONLINE' and session_in.meeting_provider == 'ZOOM':
+        zoom_data = await zoom_integration_service.create_meeting(
+            topic=f"Live Assessment Session - {session_in.assessment_id}",
+            start_time=session_in.start_time.isoformat(),
+            duration=60 # Default 60 mins
+        )
+        session.meeting_link = zoom_data.get("join_url")
+        session.host_meeting_link = zoom_data.get("start_url")
+
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+@router.get("/{session_id}", response_model=SessionResponse)
+async def get_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    result = await db.execute(select(Session).where(Session.id == session_id))
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
 
 @router.post("/{session_id}/checkin", response_model=ParticipantResponse)
 async def check_in_participant(

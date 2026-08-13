@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, Clock, PlayCircle } from "lucide-react"
 import { DataTable } from "@/components/ui/DataTable"
 import { api } from "@/lib/api"
@@ -8,7 +8,7 @@ export function AssessmentsView() {
   const [isModalOpen, setModalOpen] = useState(false)
   const queryClient = useQueryClient()
 
-  const { data: assessments, isLoading, isError } = useQuery({
+  const { data: assessments } = useQuery({
     queryKey: ["assessments"],
     queryFn: async () => {
       const response = await api.get('/assessments/')

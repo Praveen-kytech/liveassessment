@@ -1,8 +1,10 @@
 import asyncio
+import pytest
 from datetime import datetime
 from app.core.database import AsyncSessionLocal
 from app.models.session import Session
 
+@pytest.mark.asyncio
 async def test_insert():
     async with AsyncSessionLocal() as db:
         try:

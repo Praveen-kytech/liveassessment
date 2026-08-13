@@ -1,11 +1,10 @@
-import React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { QrCode, MoreHorizontal, CheckCircle } from "lucide-react"
 import { DataTable } from "@/components/ui/DataTable"
 import { api } from "@/lib/api"
 
 export function ParticipantsView() {
-  const { data: participants, isLoading } = useQuery({
+  const { data: participants } = useQuery({
     queryKey: ["participants"],
     queryFn: async () => {
       const response = await api.get('/participants/')

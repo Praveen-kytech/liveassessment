@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import json
@@ -159,9 +159,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
 
 @router.post("/session/{session_id}/release-question/{question_id}")
 async def release_question(session_id: int, question_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Question).where(Question.id == question_id))
+    question = result.scalars().first()
+    
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
     question_payload = {
         "action": "new_question",
-        "question_id": question_id,
+        "question_id": question.id,
+        "text": question.text,
+        "type": question.type
     }
     
     event = SessionEvent(

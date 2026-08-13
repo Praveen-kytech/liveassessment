@@ -1,11 +1,13 @@
-import { createBrowserRouter } from "react-router-dom"
+import { createBrowserRouter, Navigate } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell"
 import { DashboardView } from "@/features/dashboard/DashboardView"
 import { DoctorLiveControlPage } from "@/features/live-assessment/pages/DoctorLiveControlPage"
 import { ParticipantLiveAssessmentPage } from "@/features/live-assessment/pages/ParticipantLiveAssessmentPage"
 import { SessionResultsView } from "@/features/results/SessionResultsView"
 import { ResultsPage } from "@/features/results/pages/ResultsPage"
+import { CertificatePage } from "@/features/results/pages/CertificatePage"
 import { AssessmentsView } from "@/features/assessments/AssessmentsView"
+import { AssessmentBuilderPage } from "@/features/assessments/pages/AssessmentBuilderPage"
 import { ParticipantsView } from "@/features/participants/ParticipantsView"
 import { LoginPage } from "@/features/auth/pages/LoginPage"
 import { SignupPage } from "@/features/auth/pages/SignupPage"
@@ -33,6 +35,14 @@ export const router = createBrowserRouter([
         element: <DashboardView />,
       },
       {
+        path: "dashboard",
+        element: <Navigate to="/" replace />
+      },
+      {
+        path: "/assessments/create",
+        element: <AssessmentBuilderPage />,
+      },
+      {
         path: "assessments",
         element: <AssessmentsView />,
       },
@@ -51,6 +61,10 @@ export const router = createBrowserRouter([
       {
         path: "results/:id",
         element: <ResultsPage />,
+      },
+      {
+        path: "certificate/:id",
+        element: <CertificatePage />,
       },
       {
         path: "settings",

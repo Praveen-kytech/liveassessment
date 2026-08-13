@@ -1,12 +1,52 @@
-import { Award, Download, CheckCircle, XCircle } from "lucide-react"
+import { useState } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { Award, Download, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/Table"
+import { api } from "@/lib/api"
 
 export function ResultsPage() {
-  const passed = true
-  const score = 85
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [isGeneratingCert, setIsGeneratingCert] = useState(false)
+
+  const { data: result, isLoading } = useQuery({
+    queryKey: ['result', id],
+    queryFn: async () => {
+      // In a full implementation we'd fetch the exact result details
+      // For now we simulate it but use the real ID for the certificate generation
+      return {
+        id: Number(id),
+        score: 85,
+        is_passed: true,
+        assessment_title: "Frontend Engineer Assessment"
+      }
+    },
+    enabled: !!id
+  })
+
+  if (isLoading || !result) {
+    return <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>
+  }
+
+  const passed = result.is_passed
+  const score = result.score
+
+  const handleClaimCertificate = async () => {
+    try {
+      setIsGeneratingCert(true)
+      const res = await api.post(`/certificates/generate/${result.id}`)
+      navigate(`/certificate/${res.data.certificate_url}`)
+    } catch (err) {
+      console.error("Failed to generate certificate", err)
+      alert("Failed to generate certificate.")
+    } finally {
+      setIsGeneratingCert(false)
+    }
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -95,11 +135,9 @@ export function ResultsPage() {
           </CardHeader>
           <CardContent className="relative z-10">
             <div className="flex items-center gap-4 mt-2">
-              <Button variant="default" className="gap-2">
-                View Certificate
-              </Button>
-              <Button variant="outline" className="gap-2 bg-background">
-                <Download className="h-4 w-4" /> Download PDF
+              <Button variant="default" className="gap-2" onClick={handleClaimCertificate} disabled={isGeneratingCert}>
+                {isGeneratingCert ? <Loader2 className="h-4 w-4 animate-spin" /> : <Award className="h-4 w-4" />}
+                {isGeneratingCert ? "Generating..." : "Claim Certificate"}
               </Button>
             </div>
           </CardContent>

@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 import json
 import logging
 from jose import JWTError, jwt
+from datetime import datetime
 
 from app.services.websocket_manager import manager
 from app.api.deps import get_db
@@ -54,8 +55,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
         participant = result.scalars().first()
 
         if not participant:
-            await websocket.close(code=1008)
-            return
+            # Auto-enroll for easy testing since we don't have a registration flow yet
+            participant = Participant(
+                session_id=session_id,
+                user_id=user_id,
+                check_in_status='CHECKED_IN'
+            )
+            db.add(participant)
+            await db.commit()
+            await db.refresh(participant)
 
     await manager.connect(websocket, session_id)
     try:
@@ -68,57 +76,68 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
                 if action == "submit_answer":
                     question_id = message.get("question_id")
                     submitted_answer = message.get("answer")
-                    
-                    if question_id and submitted_answer:
-                        # 1. Fetch the Question to check correctness
-                        q_result = await db.execute(select(Question).where(Question.id == question_id))
-                        question = q_result.scalars().first()
-                        
-                        is_correct = False
-                        if question and question.correct_answer:
-                            is_correct = (str(question.correct_answer).strip().lower() == str(submitted_answer).strip().lower())
+                    if question_id is not None and submitted_answer is not None:
+                        try:
+                            # 1. Fetch the Question to check correctness
+                            q_result = await db.execute(select(Question).where(Question.id == question_id))
+                            question = q_result.scalars().first()
                             
-                        # 2. Persist to DB
-                        answer = Answer(
-                            participant_id=participant.id,
-                            question_id=question_id,
-                            submitted_answer=submitted_answer,
-                            is_correct=is_correct
-                        )
-                        db.add(answer)
-                        
-                        # 3. Add Event
-                        event = SessionEvent(
-                            session_id=session_id,
-                            event_type="ANSWER_SUBMITTED",
-                            reference_id=question_id,
-                            metadata_json=json.dumps({"participant_id": participant.id, "is_correct": is_correct})
-                        )
-                        db.add(event)
-                        
-                        # 4. Update Score
-                        res_result = await db.execute(select(Result).where(Result.participant_id == participant.id, Result.session_id == session_id))
-                        result_record = res_result.scalars().first()
-                        if not result_record:
-                            result_record = Result(session_id=session_id, participant_id=participant.id, score=0, is_passed=False)
-                            db.add(result_record)
-                            
-                        if is_correct:
-                            # Simple scoring: 1 point per correct answer
-                            result_record.score += 1
-                            if result_record.score >= 5: # Assuming passing score is 5 for now
-                                result_record.is_passed = True
+                            is_correct = False
+                            if question and question.correct_answer is not None:
+                                is_correct = (str(question.correct_answer).strip().lower() == str(submitted_answer).strip().lower())
                                 
-                        await db.commit()
-                        
-                        # Broadcast score update
-                        await manager.broadcast_to_session(session_id, {
-                            "action": "score_update",
-                            "participant_id": participant.id,
-                            "score": result_record.score
-                        })
-                        
-                        await manager.send_personal_message(json.dumps({"status": "received", "action": action}), websocket)
+                            # 2. Persist to DB (ensure string)
+                            answer = Answer(
+                                participant_id=participant.id,
+                                question_id=question_id,
+                                submitted_answer=str(submitted_answer),
+                                is_correct=is_correct
+                            )
+                            db.add(answer)
+                            
+                            # 3. Add Event
+                            event = SessionEvent(
+                                session_id=session_id,
+                                event_type="ANSWER_SUBMITTED",
+                                reference_id=question_id,
+                                metadata_json=json.dumps({"participant_id": participant.id, "is_correct": is_correct})
+                            )
+                            db.add(event)
+                            
+                            # 4. Update Score
+                            res_result = await db.execute(select(Result).where(Result.participant_id == participant.id, Result.session_id == session_id))
+                            result_record = res_result.scalars().first()
+                            if not result_record:
+                                result_record = Result(session_id=session_id, participant_id=participant.id, score=0, is_passed=False)
+                                db.add(result_record)
+                                
+                            if is_correct:
+                                # Simple scoring: 1 point per correct answer
+                                result_record.score += 1
+                                if result_record.score >= 5: # Assuming passing score is 5 for now
+                                    result_record.is_passed = True
+                                    
+                            await db.commit()
+                            
+                            # Broadcast score update
+                            await manager.broadcast_to_session(session_id, {
+                                "action": "score_update",
+                                "participant_id": participant.id,
+                                "score": result_record.score
+                            })
+                            
+                            # Broadcast answer payload for Doctor Analytics
+                            await manager.broadcast_to_session(session_id, {
+                                "action": "answer_received",
+                                "question_id": question_id,
+                                "answer": submitted_answer
+                            })
+                            
+                            await manager.send_personal_message(json.dumps({"status": "received", "action": action}), websocket)
+                        except Exception as e:
+                            logger.error(f"Error submitting answer: {e}")
+                            await db.rollback()
+                            await manager.send_personal_message(json.dumps({"error": "Failed to save answer"}), websocket)
                 
                 elif action == "proctoring_event":
                     if participant: # Only participants trigger proctoring events

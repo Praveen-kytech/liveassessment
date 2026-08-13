@@ -1,18 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
 
 class CertificateBase(BaseModel):
+    participant_id: int
     result_id: int
-    certificate_number: str
-    verification_url: str
+    certificate_url: str
 
 class CertificateCreate(CertificateBase):
     pass
 
 class CertificateResponse(CertificateBase):
     id: int
-    issued_at: datetime
+    created_at: datetime
+    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

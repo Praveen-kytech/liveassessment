@@ -92,3 +92,38 @@ async def check_in_participant(
     await db.refresh(participant)
 
     return participant
+
+@router.post("/{session_id}/end", response_model=dict)
+async def end_session(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    # Only admins can end sessions
+    if current_user.get("role_id") != 1:
+        raise HTTPException(status_code=403, detail="Not authorized to end sessions.")
+        
+    result = await db.execute(select(Session).where(Session.id == session_id))
+    session = result.scalars().first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    session.status = "COMPLETED"
+    
+    if session.meeting_provider == 'ZOOM' and session.meeting_link:
+        # Extract zoom meeting ID from link or metadata (if we stored it).
+        # We didn't store meeting_id explicitly, but we can extract it from the link for real zoom meetings.
+        # Alternatively, if token is mocked, just return success.
+        meeting_id = "mock"
+        if "zoom.us" in session.meeting_link:
+            import re
+            match = re.search(r'/j/(\d+)', session.meeting_link)
+            if match:
+                meeting_id = match.group(1)
+        
+        if meeting_id:
+            await zoom_integration_service.end_meeting(meeting_id)
+            
+    await db.commit()
+    return {"message": "Session ended successfully"}

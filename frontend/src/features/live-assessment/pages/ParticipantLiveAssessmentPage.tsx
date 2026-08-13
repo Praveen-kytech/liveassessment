@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "react-router-dom"
-import { Clock, AlertCircle, Video, Maximize } from "lucide-react"
+import { Clock, AlertCircle, AlertTriangle, Video, Maximize } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Badge } from "@/components/ui/Badge"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/Card"
@@ -25,6 +25,15 @@ export function ParticipantLiveAssessmentPage() {
       return res.data
     },
     enabled: !!id,
+  })
+
+  const { data: assessment } = useQuery({
+    queryKey: ['assessment', session?.assessment_id],
+    queryFn: async () => {
+      const res = await api.get(`/assessments/${session.assessment_id}`)
+      return res.data
+    },
+    enabled: !!session?.assessment_id,
   })
 
   // WebSocket Connection
@@ -153,7 +162,7 @@ export function ParticipantLiveAssessmentPage() {
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-              {activeQuestion ? `Question ${activeQuestion} of 10` : "Waiting for Question..."}
+              {activeQuestion ? `Question ${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1} of ${assessment?.questions?.length || 0}` : "Waiting for Question..."}
             </span>
             <span className="text-sm text-muted-foreground font-medium">Multiple Choice</span>
           </div>
@@ -169,21 +178,16 @@ export function ParticipantLiveAssessmentPage() {
         </div>
 
         {/* Question Card */}
-        {activeQuestion ? (
+        {activeQuestion && assessment?.questions?.find((q: any) => q.id === activeQuestion) ? (
           <Card className="shadow-lg border-primary/10 relative overflow-hidden animate-in slide-in-from-bottom-4 fade-in">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary/50" />
             <CardHeader className="pt-8 pb-4">
               <h2 className="text-2xl font-semibold leading-tight text-foreground">
-                What is the primary purpose of the React useMemo hook?
+                {assessment.questions.find((q: any) => q.id === activeQuestion).text}
               </h2>
             </CardHeader>
             <CardContent className="space-y-4 pb-8">
-              {[
-                "To cache complex calculation results",
-                "To memoize entire components",
-                "To manage side effects",
-                "To subscribe to context changes"
-              ].map((option, index) => (
+              {assessment.questions.find((q: any) => q.id === activeQuestion).options?.map((option: string, index: number) => (
                 <button
                   key={index}
                   onClick={() => setSelectedOption(index)}

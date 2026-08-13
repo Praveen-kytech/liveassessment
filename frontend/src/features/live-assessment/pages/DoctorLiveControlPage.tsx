@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
-import { useParams } from "react-router-dom"
-import { Play, Maximize, AlertTriangle, Video, Users, Clock, ArrowRight, ShieldAlert, Trophy } from "lucide-react"
+import { useNavigate, useParams } from "react-router-dom"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
+import { Play, Maximize, AlertTriangle, Video, Users, Clock, ArrowRight, ShieldAlert, Trophy, Copy } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -27,8 +28,10 @@ export function DoctorLiveControlPage() {
     refetchInterval: 5000 // Poll every 5s for live updates
   });
 
+  const navigate = useNavigate()
   const [alerts, setAlerts] = useState<AlertEvent[]>([])
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
+  const [answerStats, setAnswerStats] = useState<Record<number, Record<number, number>>>({})
   const ws = useRef<WebSocket | null>(null)
 
   const { data: session } = useQuery({
@@ -38,6 +41,15 @@ export function DoctorLiveControlPage() {
       return res.data
     },
     enabled: !!id,
+  })
+
+  const { data: assessment } = useQuery({
+    queryKey: ['assessment', session?.assessment_id],
+    queryFn: async () => {
+      const res = await api.get(`/assessments/${session.assessment_id}`)
+      return res.data
+    },
+    enabled: !!session?.assessment_id,
   })
 
   useEffect(() => {
@@ -58,6 +70,19 @@ export function DoctorLiveControlPage() {
             type: data.type,
             message: data.message
           }, ...prev].slice(0, 50)) // Keep last 50
+        } else if (data.action === "answer_received") {
+          setAnswerStats(prev => {
+            const qId = data.question_id
+            const ans = data.answer
+            const currentQStats = prev[qId] || {}
+            return {
+              ...prev,
+              [qId]: {
+                ...currentQStats,
+                [ans]: (currentQStats[ans] || 0) + 1
+              }
+            }
+          })
         }
       } catch (err) {
         console.error("WS parse error", err)
@@ -75,11 +100,16 @@ export function DoctorLiveControlPage() {
     }
   }
 
+  const copyParticipantLink = () => {
+    const link = `${window.location.origin}/live/assessment/${id}`
+    navigator.clipboard.writeText(link)
+    alert("Participant link copied! Paste it in a new Incognito window to join as a student.")
+  }
+
   const releaseQuestion = async (qNumber: number) => {
     try {
-      // In a real app, this would be the actual question ID from the database
-      // For now, we mock the question ID as the question number
-      await api.post(`/live/session/${id}/release-question/${qNumber}`)
+      // Use axios directly with the full URL because the live router is mounted at /api/live, not /api/v1
+      await api.post(`http://localhost:8000/api/live/session/${id}/release-question/${qNumber}`)
       setActiveQuestion(qNumber)
     } catch (err) {
       console.error("Failed to release question:", err)
@@ -95,6 +125,25 @@ export function DoctorLiveControlPage() {
       setActiveQuestion(null)
     }
   }
+
+  const endSession = async () => {
+    try {
+      await api.post(`/sessions/${id}/end`)
+      navigate('/live')
+    } catch (err) {
+      console.error("Failed to end session", err)
+    }
+  }
+
+  const activeQuestionData = assessment?.questions?.find((q: any) => q.id === activeQuestion)
+  
+  // Format stats for recharts
+  const chartData = activeQuestionData?.options?.map((opt: string, i: number) => ({
+    name: `Option ${String.fromCharCode(65 + i)}`,
+    fullText: opt,
+    count: answerStats[activeQuestion!]?.[i] || 0
+  })) || []
+
 
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
@@ -113,6 +162,9 @@ export function DoctorLiveControlPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="outline" className="gap-2" onClick={copyParticipantLink}>
+            <Copy className="h-4 w-4" /> Copy Join Link
+          </Button>
           {session?.host_meeting_link && (
             <Button onClick={launchZoom} className="gap-2 bg-blue-600 hover:bg-blue-700">
               <Video className="h-4 w-4" /> Launch Zoom as Host
@@ -121,7 +173,7 @@ export function DoctorLiveControlPage() {
           <Button variant="outline" className="gap-2">
             <Play className="h-4 w-4" /> Pause Session
           </Button>
-          <Button variant="destructive" className="gap-2">
+          <Button variant="destructive" className="gap-2" onClick={endSession}>
             <ShieldAlert className="h-4 w-4" /> End Session
           </Button>
         </div>
@@ -150,7 +202,7 @@ export function DoctorLiveControlPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                      Q1 of 10
+                      {activeQuestionData ? `Q${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1}` : 'No Active Question'}
                     </Badge>
                     <span className="text-sm text-muted-foreground font-medium">Multiple Choice</span>
                   </div>
@@ -169,17 +221,64 @@ export function DoctorLiveControlPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6">
-                <h3 className="text-xl font-semibold mb-6">
-                  What is the primary purpose of the React useMemo hook?
-                </h3>
-                <div className="space-y-3">
-                  {['To cache complex calculation results', 'To memoize entire components', 'To manage side effects', 'To subscribe to context changes'].map((opt, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                      <span className="text-sm">{opt}</span>
-                      <span className="text-xs text-muted-foreground font-medium">{Math.floor(Math.random() * 60) + 10}%</span>
+                {activeQuestionData ? (
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                      <h3 className="text-xl font-semibold mb-6">
+                        {activeQuestionData.text}
+                      </h3>
+                      <div className="space-y-3">
+                        {activeQuestionData.options?.map((opt: string, i: number) => {
+                          const totalAnswers = Object.values(answerStats[activeQuestion!] || {}).reduce((a, b) => a + b, 0)
+                          const count = answerStats[activeQuestion!]?.[i] || 0
+                          const percentage = totalAnswers > 0 ? Math.round((count / totalAnswers) * 100) : 0
+                          return (
+                            <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <span className="text-sm font-medium"><span className="text-muted-foreground mr-2">{String.fromCharCode(65+i)}.</span> {opt}</span>
+                              <span className="text-xs text-muted-foreground font-medium">{percentage}% ({count})</span>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="h-[300px] flex flex-col">
+                      <h4 className="text-sm font-semibold text-muted-foreground mb-4">Live Answer Distribution</h4>
+                      <div className="flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData}>
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis hide />
+                            <Tooltip 
+                              cursor={{fill: 'transparent'}}
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-popover border shadow-sm p-2 rounded-md text-sm">
+                                      <p className="font-semibold">{payload[0].payload.name}</p>
+                                      <p className="text-muted-foreground">{payload[0].payload.fullText}</p>
+                                      <p className="font-bold mt-1">Votes: {payload[0].value}</p>
+                                    </div>
+                                  )
+                                }
+                                return null
+                              }}
+                            />
+                            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                              {chartData.map((entry: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill="hsl(var(--primary))" />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                    <p>Select a question from the timeline below to launch it to participants.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -191,19 +290,22 @@ export function DoctorLiveControlPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2 overflow-x-auto pb-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((q) => (
+                  {assessment?.questions?.map((q: any, i: number) => (
                     <button
-                      key={q}
-                      onClick={() => releaseQuestion(q)}
+                      key={q.id}
+                      onClick={() => releaseQuestion(q.id)}
                       className={`flex-shrink-0 w-12 h-12 rounded-lg border flex flex-col items-center justify-center transition-colors ${
-                        activeQuestion === q ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2 ring-offset-background' :
+                        activeQuestion === q.id ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2 ring-offset-background' :
                         'bg-muted/20 text-muted-foreground hover:bg-muted/50'
                       }`}
                     >
-                      <span className="text-xs font-semibold">Q{q}</span>
-                      {activeQuestion === q && <ArrowRight className="h-3 w-3 mt-0.5" />}
+                      <span className="text-xs font-semibold">Q{i + 1}</span>
+                      {activeQuestion === q.id && <ArrowRight className="h-3 w-3 mt-0.5" />}
                     </button>
                   ))}
+                  {!assessment?.questions?.length && (
+                    <div className="text-sm text-muted-foreground py-2">No questions available for this assessment.</div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from typing import List
 
 from app.api.deps import get_db
@@ -17,7 +18,12 @@ async def read_assessments(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
-    result = await db.execute(select(Assessment).offset(skip).limit(limit))
+    result = await db.execute(
+        select(Assessment)
+        .options(selectinload(Assessment.questions))
+        .offset(skip)
+        .limit(limit)
+    )
     return result.scalars().all()
 
 @router.post("/", response_model=AssessmentResponse)
@@ -30,7 +36,13 @@ async def create_assessment(
     db.add(assessment)
     await db.commit()
     await db.refresh(assessment)
-    return assessment
+    
+    result = await db.execute(
+        select(Assessment)
+        .options(selectinload(Assessment.questions))
+        .where(Assessment.id == assessment.id)
+    )
+    return result.scalars().first()
 
 @router.get("/{assessment_id}", response_model=AssessmentResponse)
 async def read_assessment(
@@ -38,7 +50,11 @@ async def read_assessment(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
-    result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
+    result = await db.execute(
+        select(Assessment)
+        .options(selectinload(Assessment.questions))
+        .where(Assessment.id == assessment_id)
+    )
     assessment = result.scalars().first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")

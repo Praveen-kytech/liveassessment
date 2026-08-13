@@ -69,4 +69,26 @@ class ZoomIntegrationService:
             response.raise_for_status()
             return response.json()
 
+    async def end_meeting(self, meeting_id: str) -> bool:
+        logger.info(f"Ending zoom meeting {meeting_id}")
+        token = await self._get_access_token()
+        
+        if token == "mock_zoom_token":
+            return True
+            
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"{self.base_url}/meetings/{meeting_id}/status",
+                json={"action": "end"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+            )
+            # 204 No Content is expected on success
+            if response.status_code == 204 or response.status_code == 200:
+                return True
+            logger.error(f"Failed to end Zoom meeting. Status: {response.status_code}, Body: {response.text}")
+            return False
+
 zoom_integration_service = ZoomIntegrationService()

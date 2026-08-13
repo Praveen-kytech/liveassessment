@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 from .base import BaseSchema, TimestampSchema
 
@@ -19,5 +19,16 @@ class AssessmentUpdate(BaseSchema):
     description: Optional[str] = None
     organization_id: Optional[int] = None
 
+class QuestionResponse(BaseModel):
+    id: int
+    text: str
+    type: str
+    options: Optional[list] = None
+    order: int
+
+    class Config:
+        from_attributes = True
+
 class AssessmentResponse(AssessmentBase, TimestampSchema):
     id: int
+    questions: List[QuestionResponse] = []

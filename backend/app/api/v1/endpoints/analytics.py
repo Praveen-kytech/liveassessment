@@ -25,17 +25,24 @@ async def get_session_analytics(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Fetch leaderboard (results joined with participant/user)
+    # Fetch leaderboard (all participants, left joined with results)
     leaderboard_data = []
-    res = await db.execute(select(Result, Participant, User).join(Participant, Result.participant_id == Participant.id).join(User, Participant.user_id == User.id).where(Result.session_id == session_id).order_by(Result.score.desc()))
-    for result, participant, user in res.all():
+    res = await db.execute(
+        select(Participant, User, Result)
+        .join(User, Participant.user_id == User.id)
+        .outerjoin(Result, (Result.participant_id == Participant.id) & (Result.session_id == session_id))
+        .where(Participant.session_id == session_id)
+    )
+    for participant, user, result in res.all():
         leaderboard_data.append({
             "participant_id": participant.id,
-            "user_name": user.full_name,
-            "score": result.score,
-            "is_passed": result.is_passed,
-            "certificate_issued": result.certificate_issued
+            "user_name": f"{user.first_name} {user.last_name}",
+            "score": result.score if result else 0,
+            "is_passed": result.is_passed if result else False,
+            "certificate_issued": result.certificate_issued if result else False
         })
+    # Sort leaderboard by score descending
+    leaderboard_data.sort(key=lambda x: x["score"], reverse=True)
         
     # Fetch events timeline
     timeline_data = []
@@ -54,7 +61,7 @@ async def get_session_analytics(
     for log, participant, user in p_res.all():
         proctoring_data.append({
             "participant_id": participant.id,
-            "user_name": user.full_name,
+            "user_name": f"{user.first_name} {user.last_name}",
             "event_type": log.event_type,
             "description": log.description,
             "created_at": log.created_at.isoformat()

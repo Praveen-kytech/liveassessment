@@ -6,6 +6,7 @@ class QuestionBase(BaseSchema):
     type: str
     assessment_id: int
     correct_answer: Optional[str] = None
+    options: Optional[list] = None
     order: int = 0
 
 class QuestionCreate(QuestionBase):

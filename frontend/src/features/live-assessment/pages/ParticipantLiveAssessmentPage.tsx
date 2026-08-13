@@ -12,6 +12,7 @@ import { ZoomEmbed } from "@/components/zoom/ZoomEmbed"
 export function ParticipantLiveAssessmentPage() {
   const { id } = useParams()
   const { token } = useAuthStore()
+  const [currentQuestion] = useState<{id: number, text: string, type: string} | null>(null)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [warning, setWarning] = useState<string | null>(null)
@@ -104,11 +105,11 @@ export function ParticipantLiveAssessmentPage() {
     })
   }
 
-  const joinZoom = () => {
-    if (session?.meeting_link) {
-      window.open(session.meeting_link, '_blank')
-    }
-  }
+  // const joinZoom = () => {
+  //   if (session?.meeting_link) {
+  //     window.open(session.meeting_link, '_blank')
+  //   }
+  // }
 
   // Pre-assessment Gate
   if (!isFullscreen) {
@@ -164,17 +165,17 @@ export function ParticipantLiveAssessmentPage() {
             <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
               {activeQuestion ? `Question ${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1} of ${assessment?.questions?.length || 0}` : "Waiting for Question..."}
             </span>
-            <span className="text-sm text-muted-foreground font-medium">Multiple Choice</span>
+            <span className="text-sm text-muted-foreground font-medium">{currentQuestion?.type || "Waiting..."}</span>
           </div>
           <div className="flex items-center gap-2 text-rose-500 font-bold bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100">
             <Clock className="h-4 w-4" />
-            <span>02:45</span>
+            <span>Live</span>
           </div>
         </div>
 
         {/* Progress Bar */}
         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary transition-all duration-500 ease-in-out w-[10%]" />
+          <div className="h-full bg-primary transition-all duration-500 ease-in-out w-[100%]" />
         </div>
 
         {/* Question Card */}

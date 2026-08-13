@@ -1,6 +1,6 @@
-import React from "react"
+import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Plus, Clock, PlayCircle } from "lucide-react"
 import { DataTable } from "@/components/ui/DataTable"
 import { api } from "@/lib/api"
@@ -8,7 +8,7 @@ import { api } from "@/lib/api"
 export function AssessmentsView() {
   const navigate = useNavigate()
 
-  const { data: assessments, isLoading, isError } = useQuery({
+  const { data: assessments } = useQuery({
     queryKey: ["assessments"],
     queryFn: async () => {
       const response = await api.get('/assessments/')

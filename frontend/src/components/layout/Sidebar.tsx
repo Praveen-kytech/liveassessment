@@ -6,9 +6,13 @@ import { useAuthStore } from "@/features/auth/hooks/authStore"
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: [1, 2] },
   { name: "Assessments", href: "/assessments", icon: Activity, roles: [1, 2] },
+  { name: "Results", href: "/results", icon: Activity, roles: [1] },
   { name: "Participants", href: "/participants", icon: Users, roles: [1] },
   { name: "Settings", href: "/settings", icon: Settings, roles: [1] },
+  
 ]
+
+import { TihvoLogoText } from "@/components/ui/TihvoLogo"
 
 export function Sidebar() {
   const location = useLocation()
@@ -23,8 +27,9 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card px-3 py-4">
-      <div className="mb-8 px-4">
-        <h1 className="text-xl font-bold tracking-tight text-primary">AssessLive</h1>
+      <div className="mb-6 px-4 py-2 flex items-center gap-2">
+        <img src="/logo.png" alt="Tihvo Logo" className="w-8 h-8 object-contain" />
+        <TihvoLogoText fontSize={20} />
       </div>
       <nav className="flex-1 space-y-1">
         {filteredNav.map((item) => {

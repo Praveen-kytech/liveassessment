@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, sessions, assessments, participants, questions, users, zoom, analytics, certificates
+from app.api.v1.endpoints import auth, sessions, assessments, participants, questions, users, zoom, analytics, certificates, dashboard
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -11,3 +11,4 @@ api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(zoom.router, prefix="/zoom", tags=["zoom"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(certificates.router, prefix="/certificates", tags=["certificates"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])

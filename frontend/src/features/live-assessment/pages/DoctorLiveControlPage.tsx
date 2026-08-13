@@ -22,7 +22,7 @@ interface AlertEvent {
 export function DoctorLiveControlPage() {
   const { id } = useParams()
   const { token } = useAuthStore()
-  const { data: analytics, refetch: refetchAnalytics } = useQuery({
+  const { data: analytics } = useQuery({
     queryKey: ['session_analytics', id],
     queryFn: () => api.get(`/analytics/sessions/${id}/analytics`).then(res => res.data),
     refetchInterval: 5000 // Poll every 5s for live updates
@@ -32,6 +32,8 @@ export function DoctorLiveControlPage() {
   const [alerts, setAlerts] = useState<AlertEvent[]>([])
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
   const [answerStats, setAnswerStats] = useState<Record<number, Record<number, number>>>({})
+  const [newQuestionText, setNewQuestionText] = useState("")
+  const [isSubmittingQuestion, setIsSubmittingQuestion] = useState(false)
   const ws = useRef<WebSocket | null>(null)
 
   const { data: session } = useQuery({
@@ -144,7 +146,24 @@ export function DoctorLiveControlPage() {
     count: answerStats[activeQuestion!]?.[i] || 0
   })) || []
 
-
+  const handleCreateQuestion = async () => {
+    if (!newQuestionText.trim() || !session?.assessment_id) return
+    setIsSubmittingQuestion(true)
+    try {
+      const { data: question } = await api.post('/questions/', {
+        text: newQuestionText,
+        type: 'TEXT',
+        assessment_id: session.assessment_id,
+        order: 1
+      })
+      await api.post(`http://localhost:8000/api/live/session/${id}/release-question/${question.id}`)
+      setNewQuestionText("")
+    } catch (error) {
+      console.error("Failed to create question", error)
+    } finally {
+      setIsSubmittingQuestion(false)
+    }
+  }
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
       {/* Control Room Header */}
@@ -202,9 +221,8 @@ export function DoctorLiveControlPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
-                      {activeQuestionData ? `Q${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1}` : 'No Active Question'}
+                      {activeQuestionData ? `Q${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1}` : 'Live Question Control'}
                     </Badge>
-                    <span className="text-sm text-muted-foreground font-medium">Multiple Choice</span>
                   </div>
                   <div className="flex items-center gap-4 text-sm font-medium">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -216,6 +234,9 @@ export function DoctorLiveControlPage() {
                       disabled={!activeQuestion}
                     >
                       Close Question
+                    </Button>
+                    <Button size="sm" onClick={handleCreateQuestion} disabled={isSubmittingQuestion || !newQuestionText.trim()}>
+                      {isSubmittingQuestion ? 'Sending...' : 'Push Live Question'}
                     </Button>
                   </div>
                 </div>
@@ -274,9 +295,14 @@ export function DoctorLiveControlPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                    <p>Select a question from the timeline below to launch it to participants.</p>
+                  <div className="space-y-4">
+                    <label className="text-sm font-medium">Push a New Question on the Fly</label>
+                    <textarea
+                      className="w-full min-h-[120px] p-4 border rounded-lg bg-muted/5 focus:bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-y"
+                      placeholder="Type a new question to send to participants instantly..."
+                      value={newQuestionText}
+                      onChange={(e) => setNewQuestionText(e.target.value)}
+                    />
                   </div>
                 )}
               </CardContent>

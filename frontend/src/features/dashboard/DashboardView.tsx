@@ -1,6 +1,8 @@
 import { Activity, Users, FileText, CheckCircle, TrendingUp } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { DataTable } from "@/components/ui/DataTable"
+import { useQuery } from "@tanstack/react-query"
+import { api } from "@/lib/api"
 import {
   Area,
   AreaChart,
@@ -43,6 +45,14 @@ const upcomingData = [
 ]
 
 export function DashboardView() {
+  const { data: stats } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      const res = await api.get('/dashboard/stats')
+      return res.data
+    }
+  })
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
@@ -53,10 +63,10 @@ export function DashboardView() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Participants" value="2,543" trend="+12.5%" icon={Users} />
-        <MetricCard title="Active Sessions" value="14" trend="+2" icon={Activity} />
-        <MetricCard title="Completed Assessments" value="1,204" trend="+18.2%" icon={CheckCircle} />
-        <MetricCard title="Average Score" value="76.4%" trend="-1.1%" icon={FileText} downTrend />
+        <MetricCard title="Total Participants" value={stats?.totalParticipants || "60"} trend="+12.5%" icon={Users} />
+        <MetricCard title="Active Sessions" value={stats?.activeSessions || "5"} trend="+2" icon={Activity} />
+        <MetricCard title="Completed Assessments" value={stats?.completedAssessments || "17"} trend="+18.2%" icon={CheckCircle} />
+        <MetricCard title="Average Score" value={stats?.averageScore ? `${stats.averageScore.toFixed(1)}%` : "20%"} trend="-1.1%" icon={FileText} downTrend />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

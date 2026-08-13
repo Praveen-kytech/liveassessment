@@ -131,7 +131,7 @@ export function DoctorLiveControlPage() {
   const endSession = async () => {
     try {
       await api.post(`/sessions/${id}/end`)
-      navigate('/live')
+      navigate('/assessments')
     } catch (err) {
       console.error("Failed to end session", err)
     }

@@ -67,9 +67,9 @@ export function ZoomEmbed({ meetingLink, participantLink, role }: ZoomEmbedProps
 
         // Measure exactly the size of our card container to feed into Zoom
         const rect = containerRef.current.getBoundingClientRect();
-        // Zoom requires a minimum size to render the toolbar properly
+        // Zoom requires a minimum size to render properly without throwing an error
         const initWidth = Math.max(Math.floor(rect.width || 800), 800);
-        const initHeight = Math.max(Math.floor(rect.height || 600), 500);
+        const initHeight = Math.max(Math.floor(rect.height || 600), 600);
 
         await client.init({
           zoomAppRoot: meetingSDKElement,

@@ -15,6 +15,7 @@ export function ParticipantLiveAssessmentPage() {
   const [currentQuestion] = useState<{id: number, text: string, type: string} | null>(null)
   const [selectedOption, setSelectedOption] = useState<number | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
   const [warning, setWarning] = useState<string | null>(null)
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
   const ws = useRef<WebSocket | null>(null)
@@ -99,6 +100,7 @@ export function ParticipantLiveAssessmentPage() {
   const enterFullscreen = () => {
     document.documentElement.requestFullscreen().then(() => {
       setIsFullscreen(true)
+      setHasStarted(true)
       setWarning(null)
     }).catch(err => {
       console.error("Error attempting to enable fullscreen:", err)
@@ -111,27 +113,30 @@ export function ParticipantLiveAssessmentPage() {
   //   }
   // }
 
-  // Pre-assessment Gate
-  if (!isFullscreen) {
-    return (
-      <div className="min-h-screen bg-muted/10 flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 text-center space-y-6 shadow-xl border-primary/20">
-          <h1 className="text-2xl font-bold">Assessment Setup</h1>
-          <p className="text-muted-foreground">
-            Before starting, you must enter Full Screen mode. Navigating away from this tab during the assessment is strictly monitored.
-          </p>
-          <div className="space-y-4">
-            <Button onClick={enterFullscreen} className="w-full gap-2" size="lg">
-              <Maximize className="h-5 w-5" /> Enter Full Screen & Start
-            </Button>
-          </div>
-        </Card>
-      </div>
-    )
-  }
+  // We use a fixed overlay instead of unmounting the component tree.
+  // This prevents the Zoom SDK from being destroyed when the browser exits fullscreen
+  // (e.g. when requesting camera permissions or screen sharing).
 
   return (
     <div className="min-h-screen bg-muted/10 flex flex-col p-4 relative">
+      
+      {!isFullscreen && (
+        <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center p-4">
+          <Card className="w-full max-w-md p-8 text-center space-y-6 shadow-xl border-primary/20">
+            <h1 className="text-2xl font-bold">{hasStarted ? "Assessment Paused" : "Assessment Setup"}</h1>
+            <p className="text-muted-foreground">
+              {hasStarted 
+                ? "You exited full screen mode (or the browser opened a permission dialog). Please return to full screen to continue." 
+                : "Before starting, you must enter Full Screen mode. Navigating away from this tab during the assessment is strictly monitored."}
+            </p>
+            <div className="space-y-4">
+              <Button onClick={enterFullscreen} className="w-full gap-2" size="lg">
+                <Maximize className="h-5 w-5" /> {hasStarted ? "Return to Full Screen" : "Enter Full Screen & Start"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
       {/* Anti-cheat Warning Overlay */}
       {warning && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-bounce">
@@ -141,16 +146,15 @@ export function ParticipantLiveAssessmentPage() {
         </div>
       )}
 
-      <div className="flex gap-6 h-full max-w-7xl mx-auto w-full flex-1">
+      <div className="flex gap-6 h-[calc(100vh-2rem)] max-w-[1600px] mx-auto w-full">
         
         {/* Left Side: Zoom Embed */}
-        <div className="w-1/3 min-w-[300px] bg-card rounded-xl border shadow-sm flex flex-col">
-          <div className="p-3 border-b font-medium text-sm flex justify-between items-center bg-muted/30">
+        <div className="w-[800px] bg-card rounded-2xl border shadow-xl flex flex-col overflow-hidden shrink-0">
+          <div className="px-4 py-3 border-b font-semibold text-sm flex justify-between items-center bg-muted/30">
             <span>Live Proctoring</span>
-            <Badge variant="outline" className="text-xs">Recording</Badge>
+            <Badge variant="destructive" className="text-xs animate-pulse px-2 py-0.5">Recording</Badge>
           </div>
-          {/* Zoom Video Feed */}
-          <div className="flex-1 min-h-[550px] pb-16 relative bg-black rounded-xl">
+          <div className="flex-1 relative bg-black">
             {session?.meeting_link && (
               <ZoomEmbed meetingLink={session.meeting_link} role={0} />
             )}
@@ -158,87 +162,91 @@ export function ParticipantLiveAssessmentPage() {
         </div>
 
         {/* Right Side: Assessment Form */}
-        <div className="flex-1 space-y-6 flex flex-col">
-        {/* Progress & Status */}
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-              {activeQuestion ? `Question ${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1} of ${assessment?.questions?.length || 0}` : "Waiting for Question..."}
-            </span>
-            <span className="text-sm text-muted-foreground font-medium">{currentQuestion?.type || "Waiting..."}</span>
-          </div>
-          <div className="flex items-center gap-2 text-rose-500 font-bold bg-rose-50 px-3 py-1.5 rounded-full border border-rose-100">
-            <Clock className="h-4 w-4" />
-            <span>Live</span>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary transition-all duration-500 ease-in-out w-[100%]" />
-        </div>
-
-        {/* Question Card */}
-        {activeQuestion && assessment?.questions?.find((q: any) => q.id === activeQuestion) ? (
-          <Card className="shadow-lg border-primary/10 relative overflow-hidden animate-in slide-in-from-bottom-4 fade-in">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary/50" />
-            <CardHeader className="pt-8 pb-4">
-              <h2 className="text-2xl font-semibold leading-tight text-foreground">
-                {assessment.questions.find((q: any) => q.id === activeQuestion).text}
-              </h2>
-            </CardHeader>
-            <CardContent className="space-y-4 pb-8">
-              {assessment.questions.find((q: any) => q.id === activeQuestion).options?.map((option: string, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedOption(index)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ${
-                    selectedOption === index
-                      ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                      : "border-muted hover:border-primary/40 hover:bg-muted/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      selectedOption === index ? "border-primary" : "border-muted-foreground/30"
-                    }`}>
-                      {selectedOption === index && <div className="w-3 h-3 rounded-full bg-primary" />}
-                    </div>
-                    <span className={`text-base ${selectedOption === index ? "font-medium" : ""}`}>
-                      {option}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </CardContent>
-            <CardFooter className="bg-muted/20 border-t p-6 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4" />
-                <span>Select one option</span>
+        <div className="flex-1 bg-card rounded-2xl border shadow-xl flex flex-col overflow-hidden">
+          {/* Header Area */}
+          <div className="px-8 py-5 border-b bg-muted/10 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge className="px-4 py-1.5 text-sm rounded-full shadow-sm">
+                  {activeQuestion ? `Question ${assessment?.questions?.findIndex((q: any) => q.id === activeQuestion) + 1} of ${assessment?.questions?.length || 0}` : "Standby Mode"}
+                </Badge>
+                <span className="text-sm font-semibold text-muted-foreground tracking-wide uppercase">{currentQuestion?.type || "Waiting..."}</span>
               </div>
-              <Button 
-                size="lg" 
-                disabled={selectedOption === null} 
-                className="px-8 font-semibold shadow-md"
-                onClick={() => {
-                  ws.current?.send(JSON.stringify({ action: "submit_answer", question_id: activeQuestion, answer: selectedOption }))
-                  // Show a temporary success state before the question closes
-                  setSelectedOption(null)
-                  setActiveQuestion(null)
-                }}
-              >
-                Submit Answer
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : (
-          <Card className="shadow-lg border-primary/10 relative overflow-hidden flex-1 flex flex-col items-center justify-center text-center p-8 animate-pulse bg-muted/20">
-            <Clock className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
-            <h2 className="text-xl font-semibold text-foreground">Waiting for the next question...</h2>
-            <p className="text-muted-foreground mt-2 max-w-md">The Doctor is currently reviewing the results. Pay attention to the Zoom feed for instructions.</p>
-          </Card>
-        )}
-      </div>
+              <div className="flex items-center gap-2 text-rose-600 font-bold bg-rose-50 px-4 py-1.5 rounded-full border border-rose-200 shadow-sm">
+                <Clock className="h-4 w-4" />
+                <span>Live Assessment</span>
+              </div>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="h-2.5 w-full bg-muted/50 rounded-full overflow-hidden shadow-inner">
+              <div className="h-full bg-primary transition-all duration-500 ease-in-out w-[100%]" />
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 p-8 flex flex-col bg-muted/5 relative overflow-y-auto">
+            {activeQuestion && assessment?.questions?.find((q: any) => q.id === activeQuestion) ? (
+              <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 max-w-4xl mx-auto w-full">
+                <h2 className="text-3xl font-extrabold leading-tight text-foreground mb-8 text-center mt-4">
+                  {assessment.questions.find((q: any) => q.id === activeQuestion).text}
+                </h2>
+                <div className="space-y-4 flex-1">
+                  {assessment.questions.find((q: any) => q.id === activeQuestion).options?.map((option: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedOption(index)}
+                      className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 ${
+                        selectedOption === index
+                          ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/20 scale-[1.01]"
+                          : "border-muted hover:border-primary/40 hover:bg-white bg-card shadow-sm"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selectedOption === index ? "border-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {selectedOption === index && <div className="w-3.5 h-3.5 rounded-full bg-primary" />}
+                        </div>
+                        <span className={`text-lg ${selectedOption === index ? "font-bold text-primary" : "font-medium text-foreground/80"}`}>
+                          {option}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="pt-8 mt-8 border-t flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-white px-4 py-2 rounded-lg border shadow-sm">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <span>Please double-check before submitting</span>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    disabled={selectedOption === null} 
+                    className="px-10 py-6 text-lg font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
+                    onClick={() => {
+                      ws.current?.send(JSON.stringify({ action: "submit_answer", question_id: activeQuestion, answer: selectedOption }))
+                      setSelectedOption(null)
+                      setActiveQuestion(null)
+                    }}
+                  >
+                    Submit Answer
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 animate-in fade-in duration-1000">
+                <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 animate-pulse shadow-inner">
+                  <Clock className="h-12 w-12 text-primary" />
+                </div>
+                <h2 className="text-3xl font-extrabold text-foreground mb-3">Waiting for the next question...</h2>
+                <p className="text-muted-foreground max-w-md text-lg leading-relaxed">
+                  The Doctor is currently reviewing the results. Pay attention to the Zoom feed for instructions.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

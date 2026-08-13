@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { useAuthStore } from "../hooks/authStore"
 import { TihvoLogoText } from "@/components/ui/TihvoLogo"
 
@@ -8,6 +8,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from?.pathname || "/"
   const setAuth = useAuthStore(state => state.setAuth)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,7 +29,7 @@ export function LoginPage() {
 
       const data = await response.json()
       setAuth(data.access_token, data.user)
-      navigate("/")
+      navigate(from, { replace: true })
     } catch (err: any) {
       setError(err.message)
     }
@@ -88,7 +90,7 @@ export function LoginPage() {
           
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              Don't have an account? <Link to="/signup" className="text-primary font-semibold hover:underline">Sign up for free</Link>
+              Don't have an account? <Link to="/signup" state={location.state} className="text-primary font-semibold hover:underline">Sign up for free</Link>
             </p>
           </div>
         </div>

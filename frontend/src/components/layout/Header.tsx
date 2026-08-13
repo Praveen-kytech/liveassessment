@@ -1,8 +1,11 @@
 import { Bell, Search, User } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
+import { useAuthStore } from "@/features/auth/hooks/authStore"
 
 export function Header() {
+  const { user } = useAuthStore()
+
   return (
     <header className="sticky top-0 z-10 flex h-16 flex-shrink-0 items-center gap-x-4 border-b bg-background px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
       <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
@@ -39,7 +42,7 @@ export function Header() {
             </div>
             <span className="hidden lg:flex lg:items-center">
               <span className="ml-4 text-sm font-semibold leading-6 text-foreground" aria-hidden="true">
-                Admin User
+                {user ? `${user.first_name} ${user.last_name}` : 'User'}
               </span>
             </span>
           </Button>

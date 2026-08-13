@@ -4,6 +4,7 @@ import { DashboardView } from "@/features/dashboard/DashboardView"
 import { DoctorLiveControlPage } from "@/features/live-assessment/pages/DoctorLiveControlPage"
 import { ParticipantLiveAssessmentPage } from "@/features/live-assessment/pages/ParticipantLiveAssessmentPage"
 import { SessionResultsView } from "@/features/results/SessionResultsView"
+import { ResultsView } from "@/features/results/ResultsView"
 import { ResultsPage } from "@/features/results/pages/ResultsPage"
 import { CertificatePage } from "@/features/results/pages/CertificatePage"
 import { AssessmentsView } from "@/features/assessments/AssessmentsView"
@@ -51,8 +52,8 @@ export const router = createBrowserRouter([
         element: <ParticipantsView />,
       },
       {
-        path: "live/:id/participant",
-        element: <ParticipantLiveAssessmentPage />,
+        path: "results",
+        element: <ResultsView />,
       },
       {
         path: "sessions/:id/results",
@@ -78,6 +79,10 @@ export const router = createBrowserRouter([
   },
   {
     path: "/live/assessment/:id",
-    element: <ParticipantLiveAssessmentPage />,
+    element: (
+      <ProtectedRoute>
+        <ParticipantLiveAssessmentPage />
+      </ProtectedRoute>
+    ),
   }
 ])

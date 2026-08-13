@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { TihvoLogoText } from "@/components/ui/TihvoLogo"
 
 export function SignupPage() {
@@ -9,6 +9,7 @@ export function SignupPage() {
   const [roleId, setRoleId] = useState(1)
   const [error, setError] = useState("")
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +44,7 @@ export function SignupPage() {
         throw new Error(errMsg)
       }
 
-      navigate("/login")
+      navigate("/login", { state: location.state })
     } catch (err: any) {
       setError(err.message)
     }
@@ -127,7 +128,7 @@ export function SignupPage() {
           
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              Already have an account? <Link to="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
+              Already have an account? <Link to="/login" state={location.state} className="text-primary font-semibold hover:underline">Sign in</Link>
             </p>
           </div>
         </div>

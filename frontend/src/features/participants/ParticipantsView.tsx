@@ -20,8 +20,8 @@ export function ParticipantsView() {
       header: "Participant Name",
       cell: ({ row }: any) => (
         <div>
-          <div className="font-medium">{row.original.name}</div>
-          <div className="text-xs text-muted-foreground">{row.original.email}</div>
+          <div className="font-medium">{row.original.name || `User ID: ${row.original.user_id}`}</div>
+          <div className="text-xs text-muted-foreground">{row.original.email || 'No email provided'}</div>
         </div>
       )
     },
@@ -33,7 +33,7 @@ export function ParticipantsView() {
       accessorKey: "status",
       header: "Check-in Status",
       cell: ({ row }: any) => {
-        const s = row.original.status
+        const s = row.original.status || row.original.check_in_status || 'UNKNOWN'
         return (
           <span className={`px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 w-max ${
             s === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-800' : 
@@ -41,7 +41,7 @@ export function ParticipantsView() {
             'bg-gray-100 text-gray-800'
           }`}>
             {s === 'CHECKED_IN' && <CheckCircle className="w-3 h-3" />}
-            {s.replace('_', ' ')}
+            {typeof s === 'string' ? s.replace('_', ' ') : s}
           </span>
         )
       }

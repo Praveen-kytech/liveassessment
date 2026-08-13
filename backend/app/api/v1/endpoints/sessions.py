@@ -60,6 +60,16 @@ async def get_session(
         raise HTTPException(status_code=404, detail="Session not found")
     return session
 
+@router.get("/", response_model=List[SessionResponse])
+async def list_sessions(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_active_user)
+):
+    # For now, return all sessions (in a real app, filter by org or role)
+    # Eager load the assessment to display assessment title if needed
+    result = await db.execute(select(Session).options(selectinload(Session.assessment)).order_by(Session.created_at.desc()))
+    return result.scalars().all()
+
 @router.post("/{session_id}/checkin", response_model=ParticipantResponse)
 async def check_in_participant(
     session_id: int,

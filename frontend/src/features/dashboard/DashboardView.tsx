@@ -15,6 +15,11 @@ import {
   Bar,
   Legend
 } from "recharts"
+import { useAuthStore } from "@/features/auth/hooks/authStore"
+import { useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { Input } from "@/components/ui/Input"
+import { Button } from "@/components/ui/Button"
 
 const chartData = [
   { name: "Mon", participants: 120 },
@@ -47,6 +52,18 @@ const upcomingColumns = [
 ]
 
 export function DashboardView() {
+  const { user } = useAuthStore()
+
+  // If role_id is 2 (Participant), show participant dashboard
+  if (user?.role_id === 2) {
+    return <ParticipantDashboard />
+  }
+
+  // Otherwise show admin dashboard
+  return <AdminDashboard />
+}
+
+function AdminDashboard() {
   const { data: stats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -247,5 +264,77 @@ function MetricCard({ title, value, trend, icon: Icon, downTrend = false }: any)
         </p>
       </CardContent>
     </Card>
+  )
+}
+
+function ParticipantDashboard() {
+  const [sessionId, setSessionId] = useState("")
+  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const navigate = useNavigate()
+
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    if (!sessionId.trim()) {
+      setError("Please enter a session ID")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      // Try to fetch the session to see if it exists
+      const res = await api.get(`/sessions/${sessionId.trim()}`)
+      if (res.data) {
+        navigate(`/live/assessment/${res.data.id}`)
+      }
+    } catch (err: any) {
+      console.error(err)
+      setError(err.response?.data?.detail || "Session not found or invalid.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500 max-w-2xl mx-auto mt-10">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold tracking-tight">Welcome back!</h2>
+        <p className="text-muted-foreground mt-2">
+          Ready for your next assessment?
+        </p>
+      </div>
+
+      <Card className="shadow-lg mt-8 border-primary/20">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-2xl">Join Live Session</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleJoin} className="flex flex-col gap-4 mt-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="sessionId" className="text-sm font-medium text-muted-foreground text-left">
+                Session ID or PIN
+              </label>
+              <Input 
+                id="sessionId"
+                placeholder="e.g. 12" 
+                value={sessionId}
+                onChange={(e) => setSessionId(e.target.value)}
+                className="text-lg py-6 text-center tracking-widest"
+              />
+              {error && <p className="text-red-500 text-sm mt-1 text-left">{error}</p>}
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full py-6 text-lg font-bold"
+              disabled={isLoading}
+            >
+              {isLoading ? "Verifying..." : "Join Assessment"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

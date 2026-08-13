@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     ZOOM_CLIENT_ID: Optional[str] = None
     ZOOM_CLIENT_SECRET: Optional[str] = None
     ZOOM_ACCOUNT_ID: Optional[str] = None
+    ZOOM_SDK_KEY: Optional[str] = None
+    ZOOM_SDK_SECRET: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=".env")
 

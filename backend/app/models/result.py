@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import Float, ForeignKey, Integer
+from sqlalchemy import Float, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin
 
@@ -10,6 +10,8 @@ class Result(Base, TimestampMixin):
     session_id: Mapped[int] = mapped_column(ForeignKey('sessions.id'))
     participant_id: Mapped[int] = mapped_column(ForeignKey('participants.id'))
     score: Mapped[float] = mapped_column(Float)
+    is_passed: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    certificate_issued: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
     
     session: Mapped["Session"] = relationship("Session", back_populates="results")
     participant: Mapped["Participant"] = relationship("Participant")

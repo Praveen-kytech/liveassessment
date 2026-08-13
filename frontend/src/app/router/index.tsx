@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell"
 import { DashboardView } from "@/features/dashboard/DashboardView"
 import { DoctorLiveControlPage } from "@/features/live-assessment/pages/DoctorLiveControlPage"
 import { ParticipantLiveAssessmentPage } from "@/features/live-assessment/pages/ParticipantLiveAssessmentPage"
+import { SessionResultsView } from "@/features/results/SessionResultsView"
 import { ResultsPage } from "@/features/results/pages/ResultsPage"
 import { AssessmentsView } from "@/features/assessments/AssessmentsView"
 import { ParticipantsView } from "@/features/participants/ParticipantsView"
@@ -38,6 +39,14 @@ export const router = createBrowserRouter([
       {
         path: "participants",
         element: <ParticipantsView />,
+      },
+      {
+        path: "live/:id/participant",
+        element: <ParticipantLiveAssessmentPage />,
+      },
+      {
+        path: "sessions/:id/results",
+        element: <SessionResultsView />,
       },
       {
         path: "results/:id",

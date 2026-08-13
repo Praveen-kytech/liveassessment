@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams } from "react-router-dom"
-import { Activity, Users, Clock, PlayCircle, StopCircle, LayoutList, CheckCircle, Video, AlertTriangle } from "lucide-react"
+import { Play, Maximize, AlertTriangle, Video, Users, Clock, ArrowRight, ShieldAlert, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card"
 import { Badge } from "@/components/ui/Badge"
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import { useAuthStore } from "@/features/auth/hooks/authStore"
+import { ZoomEmbed } from "@/components/zoom/ZoomEmbed"
 
 interface AlertEvent {
   id: number;
@@ -20,7 +21,14 @@ interface AlertEvent {
 export function DoctorLiveControlPage() {
   const { id } = useParams()
   const { token } = useAuthStore()
+  const { data: analytics, refetch: refetchAnalytics } = useQuery({
+    queryKey: ['session_analytics', id],
+    queryFn: () => api.get(`/analytics/sessions/${id}/analytics`).then(res => res.data),
+    refetchInterval: 5000 // Poll every 5s for live updates
+  });
+
   const [alerts, setAlerts] = useState<AlertEvent[]>([])
+  const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
   const ws = useRef<WebSocket | null>(null)
 
   const { data: session } = useQuery({
@@ -67,6 +75,27 @@ export function DoctorLiveControlPage() {
     }
   }
 
+  const releaseQuestion = async (qNumber: number) => {
+    try {
+      // In a real app, this would be the actual question ID from the database
+      // For now, we mock the question ID as the question number
+      await api.post(`/live/session/${id}/release-question/${qNumber}`)
+      setActiveQuestion(qNumber)
+    } catch (err) {
+      console.error("Failed to release question:", err)
+    }
+  }
+
+  const closeQuestion = () => {
+    if (activeQuestion && ws.current) {
+      ws.current.send(JSON.stringify({
+        action: "close_question",
+        question_id: activeQuestion
+      }))
+      setActiveQuestion(null)
+    }
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-6rem)]">
       {/* Control Room Header */}
@@ -90,10 +119,10 @@ export function DoctorLiveControlPage() {
             </Button>
           )}
           <Button variant="outline" className="gap-2">
-            <PlayCircle className="h-4 w-4" /> Pause Session
+            <Play className="h-4 w-4" /> Pause Session
           </Button>
           <Button variant="destructive" className="gap-2">
-            <StopCircle className="h-4 w-4" /> End Session
+            <ShieldAlert className="h-4 w-4" /> End Session
           </Button>
         </div>
       </div>
@@ -102,6 +131,20 @@ export function DoctorLiveControlPage() {
         <div className="grid gap-6 md:grid-cols-12">
           {/* Main View - Current Question & Timeline */}
           <div className="md:col-span-8 space-y-6">
+            
+            {/* Zoom Embedded Player */}
+            {session?.host_meeting_link && (
+              <Card className="border-primary/20 shadow-md min-h-[550px] pb-16">
+                <div className="w-full h-full relative rounded-xl">
+                  <ZoomEmbed 
+                    meetingLink={session.host_meeting_link} 
+                    participantLink={session.meeting_link}
+                    role={1} 
+                  />
+                </div>
+              </Card>
+            )}
+
             <Card className="border-primary/20 shadow-md">
               <CardHeader className="bg-muted/30 pb-4 border-b">
                 <div className="flex items-center justify-between">
@@ -115,7 +158,13 @@ export function DoctorLiveControlPage() {
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       <Clock className="h-4 w-4" /> 02:45 remaining
                     </span>
-                    <Button size="sm">Close Question</Button>
+                    <Button 
+                      size="sm" 
+                      onClick={closeQuestion} 
+                      disabled={!activeQuestion}
+                    >
+                      Close Question
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -137,7 +186,7 @@ export function DoctorLiveControlPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <LayoutList className="h-4 w-4 text-muted-foreground" /> Question Timeline
+                  <Maximize className="h-4 w-4 text-muted-foreground" /> Question Timeline
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -145,47 +194,139 @@ export function DoctorLiveControlPage() {
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((q) => (
                     <button
                       key={q}
+                      onClick={() => releaseQuestion(q)}
                       className={`flex-shrink-0 w-12 h-12 rounded-lg border flex flex-col items-center justify-center transition-colors ${
-                        q === 1 ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2 ring-offset-background' :
+                        activeQuestion === q ? 'bg-primary text-primary-foreground shadow-md ring-2 ring-primary ring-offset-2 ring-offset-background' :
                         'bg-muted/20 text-muted-foreground hover:bg-muted/50'
                       }`}
                     >
                       <span className="text-xs font-semibold">Q{q}</span>
-                      {q === 1 && <Activity className="h-3 w-3 mt-0.5" />}
+                      {activeQuestion === q && <ArrowRight className="h-3 w-3 mt-0.5" />}
                     </button>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          </div>
+            
+            {/* Live Analytics Dashboard */}
+            {analytics && (
+              <div className="grid gap-6 md:grid-cols-2 mt-6">
+                <Card className="border-primary/20 shadow-md">
+                  <CardHeader className="bg-muted/30 pb-4 border-b">
+                    <CardTitle className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-yellow-500" /> Live Leaderboard
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Participant</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics.leaderboard.map((row: any) => (
+                          <TableRow key={row.participant_id}>
+                            <TableCell className="font-medium">{row.user_name}</TableCell>
+                            <TableCell>{row.score}</TableCell>
+                            <TableCell>
+                              {row.is_passed ? (
+                                <Badge className="bg-green-500">Passed</Badge>
+                              ) : (
+                                <Badge variant="secondary">In Progress</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {analytics.leaderboard.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-muted-foreground h-24">No scores yet.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
 
-          {/* Sidebar - Stats & Live Analytics */}
-          <div className="md:col-span-4 space-y-6">
-            <Card className="border-rose-200 shadow-md">
-              <CardHeader className="bg-rose-50/50 pb-4 border-b border-rose-100">
-                <CardTitle className="text-base flex items-center gap-2 text-rose-700">
-                  <AlertTriangle className="h-4 w-4" /> Proctoring Alerts
-                </CardTitle>
-                <CardDescription className="text-rose-600/80">Real-time suspicious activity</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-4 h-[300px] overflow-y-auto">
-                {alerts.length === 0 ? (
-                  <div className="text-center text-sm text-muted-foreground mt-10">
-                    No suspicious activity detected.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {alerts.map(alert => (
-                      <div key={alert.id} className="p-3 bg-rose-50 border border-rose-200 rounded-lg">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-rose-800 text-sm">Participant #{alert.participantId}</span>
-                          <span className="text-xs text-rose-500">{alert.time}</span>
+                <Card className="border-primary/20 shadow-md">
+                  <CardHeader className="bg-muted/30 pb-4 border-b">
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-blue-500" /> Event Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 max-h-[300px] overflow-y-auto space-y-4">
+                    {analytics.timeline.map((event: any, i: number) => (
+                      <div key={i} className="flex gap-3 text-sm">
+                        <div className="w-16 text-muted-foreground shrink-0">
+                          {new Date(event.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}
                         </div>
-                        <p className="text-sm text-rose-700">{alert.message}</p>
+                        <div className="flex-1">
+                          <span className="font-medium text-primary">{event.event_type}</span>
+                          {event.metadata && (
+                            <span className="text-muted-foreground block text-xs">Ref: {event.reference_id} | Data: {event.metadata}</span>
+                          )}
+                        </div>
                       </div>
                     ))}
-                  </div>
-                )}
+                    {analytics.timeline.length === 0 && (
+                      <div className="text-center text-muted-foreground py-8">No events recorded.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+          </div>
+
+          {/* Right Sidebar - Proctoring Alerts */}
+          <div className="md:col-span-4 space-y-6">
+            <Card className="border-rose-200 shadow-md h-full flex flex-col">
+              <CardHeader className="bg-rose-50 border-b border-rose-100 pb-4">
+                <CardTitle className="flex items-center gap-2 text-rose-700">
+                  <AlertTriangle className="h-5 w-5" /> Live Proctoring Alerts
+                </CardTitle>
+                <CardDescription className="text-rose-600/80">
+                  Suspicious activity monitor
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 p-0 overflow-hidden relative min-h-[500px]">
+                <div className="absolute inset-0 overflow-y-auto p-4 space-y-3 bg-rose-50/30">
+                  
+                  {/* Historical Alerts from DB */}
+                  {analytics?.proctoring_logs?.map((log: any, i: number) => (
+                    <div key={`db-${i}`} className="bg-white border border-rose-200 p-3 rounded-lg shadow-sm border-l-4 border-l-rose-500">
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-rose-600 bg-rose-50 border-rose-200 font-mono text-[10px]">
+                          {log.event_type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-800">{log.user_name}</p>
+                      <p className="text-xs text-slate-600 mt-1">{log.description}</p>
+                    </div>
+                  ))}
+
+                  {/* Realtime WS Alerts */}
+                  {alerts.map((alert, i) => (
+                    <div key={`ws-${i}`} className="bg-white border border-rose-200 p-3 rounded-lg shadow-sm border-l-4 border-l-rose-500 animate-in fade-in slide-in-from-right-2">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold text-rose-800 text-sm">Participant #{alert.participantId}</span>
+                        <span className="text-xs text-rose-500">{alert.time}</span>
+                      </div>
+                      <p className="text-sm text-rose-700">{alert.message}</p>
+                    </div>
+                  ))}
+
+                  {!analytics?.proctoring_logs?.length && alerts.length === 0 && (
+                    <div className="text-center text-sm text-muted-foreground mt-10">
+                      No suspicious activity detected.
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -195,7 +336,7 @@ export function DoctorLiveControlPage() {
                   <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                     <Users className="h-4 w-4" /> Active Participants
                   </span>
-                  <span className="text-2xl font-bold">12</span>
+                  <span className="text-2xl font-bold">{analytics?.stats?.total_participants || 0}</span>
                 </div>
               </CardContent>
             </Card>

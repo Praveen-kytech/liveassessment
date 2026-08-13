@@ -12,10 +12,13 @@ from .attendance import Attendance
 from .certificate import Certificate
 from .zoom import Zoom
 from .audit_log import AuditLog
+from .proctoring_log import ProctoringLog
+from .session_event import SessionEvent
 
 __all__ = [
     "Base", "TimestampMixin",
     "User", "Role", "Organization", "Assessment",
     "Question", "Session", "Participant", "Answer",
-    "Result", "Attendance", "Certificate", "Zoom", "AuditLog"
+    "Result", "Attendance", "Certificate", "Zoom", "AuditLog",
+    "ProctoringLog", "SessionEvent"
 ]

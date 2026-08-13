@@ -6,7 +6,7 @@ import { useAuthStore } from "@/features/auth/hooks/authStore"
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: [1, 2] },
   { name: "Assessments", href: "/assessments", icon: Activity, roles: [1, 2] },
-  { name: "Results", href: "/results", icon: Activity, roles: [1] },
+  // { name: "Results", href: "/results", icon: Activity, roles: [1] },
   { name: "Participants", href: "/participants", icon: Users, roles: [1] },
   { name: "Settings", href: "/settings", icon: Settings, roles: [1] },
   

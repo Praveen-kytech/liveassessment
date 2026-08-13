@@ -393,7 +393,29 @@ export function DoctorLiveControlPage() {
                         <div className="flex-1">
                           <span className="font-medium text-primary">{event.event_type}</span>
                           {event.metadata && (
-                            <span className="text-muted-foreground block text-xs">Ref: {event.reference_id} | Data: {event.metadata}</span>
+                            <div className="mt-1">
+                              {(() => {
+                                try {
+                                  const data = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : event.metadata;
+                                  if (event.event_type === "ANSWER_SUBMITTED") {
+                                    return (
+                                      <div className="flex items-center gap-1.5 text-xs">
+                                        <span className="text-muted-foreground">Participant #{data.participant_id}</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        {data.is_correct ? (
+                                          <span className="text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-[10px]">Correct</span>
+                                        ) : (
+                                          <span className="text-red-600 font-medium bg-red-50 px-1.5 py-0.5 rounded border border-red-200 text-[10px]">Wrong</span>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return <span className="text-muted-foreground block text-xs">Ref: {event.reference_id} | Data: {typeof event.metadata === 'string' ? event.metadata : JSON.stringify(event.metadata)}</span>;
+                                } catch (e) {
+                                  return <span className="text-muted-foreground block text-xs">Ref: {event.reference_id} | Data: {event.metadata}</span>;
+                                }
+                              })()}
+                            </div>
                           )}
                         </div>
                       </div>

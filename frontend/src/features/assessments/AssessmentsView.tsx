@@ -1,12 +1,15 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, Clock, PlayCircle } from "lucide-react"
+import { Plus, Clock, PlayCircle, Download } from "lucide-react"
 import { DataTable } from "@/components/ui/DataTable"
 import { api } from "@/lib/api"
+import { useAuthStore } from "@/features/auth/hooks/authStore"
 
 export function AssessmentsView() {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const isParticipant = user?.role_id === 2
 
   const { data: assessments } = useQuery({
     queryKey: ["assessments"],
@@ -59,6 +62,27 @@ export function AssessmentsView() {
       id: "actions",
       cell: ({ row }: any) => {
         const assessmentId = row.original.id
+        const hasAttended = row.original.has_attended
+        
+        if (isParticipant) {
+          if (!hasAttended) {
+            return (
+              <span className="px-3 py-1.5 text-sm font-semibold text-gray-500 bg-gray-100 rounded-md">
+                Absent
+              </span>
+            )
+          }
+
+          return (
+            <button 
+              onClick={() => alert('Certificate module is coming soon!')} 
+              title="Download Certificate"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold rounded-md transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4" /> Certificate
+            </button>
+          )
+        }
         
         const handleLaunch = async () => {
           try {
@@ -95,16 +119,18 @@ export function AssessmentsView() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Assessments</h2>
           <p className="text-muted-foreground mt-2">
-            Manage your organization's assessments and business rules.
+            {isParticipant ? "View available assessments and download your certificates." : "Manage your organization's assessments and business rules."}
           </p>
         </div>
-        <button 
-          onClick={() => navigate('/assessments/create')}
-          className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Assessment
-        </button>
+        {isParticipant ? null : (
+          <button 
+            onClick={() => navigate('/assessments/create')}
+            className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Assessment
+          </button>
+        )}
       </div>
 
       <div className="bg-card border rounded-lg shadow-sm">

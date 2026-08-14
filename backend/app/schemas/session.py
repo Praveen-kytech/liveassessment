@@ -24,5 +24,13 @@ class SessionUpdate(BaseSchema):
     status: Optional[str] = None
     is_live: Optional[bool] = None
 
+from typing import Optional
+
+class AssessmentBasic(BaseSchema):
+    id: int
+    title: str
+    organization_id: int
+
 class SessionResponse(SessionBase, TimestampSchema):
     id: int
+    assessment: Optional[AssessmentBasic] = None

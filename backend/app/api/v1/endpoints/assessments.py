@@ -21,10 +21,48 @@ async def read_assessments(
     result = await db.execute(
         select(Assessment)
         .options(selectinload(Assessment.questions))
+        .where(Assessment.organization_id == current_user.get("organization_id"))
         .offset(skip)
         .limit(limit)
     )
-    return result.scalars().all()
+    assessments = list(result.scalars().all())
+    
+    attended_assessment_ids = set()
+    role_id = current_user.get("role_id")
+    # robust conversion to int
+    is_participant = str(role_id) == "2" if role_id is not None else False
+    
+    if is_participant:
+        from app.models.participant import Participant
+        from app.models.session import Session
+        att_res = await db.execute(
+            select(Session.assessment_id)
+            .join(Participant, Participant.session_id == Session.id)
+            .where(Participant.user_id == current_user.get("id"))
+            .where(Participant.check_in_status == 'CHECKED_IN')
+        )
+        attended_assessment_ids = set(att_res.scalars().all())
+        
+    response_data = []
+    for a in assessments:
+        has_att = True if a.id in attended_assessment_ids else False
+        a_dict = {
+            "id": a.id,
+            "title": a.title,
+            "description": a.description,
+            "organization_id": a.organization_id,
+            "passing_percentage": a.passing_percentage,
+            "question_timer_seconds": a.question_timer_seconds,
+            "max_attempts": a.max_attempts,
+            "is_certificate_eligible": a.is_certificate_eligible,
+            "created_at": a.created_at,
+            "updated_at": a.updated_at,
+            "questions": a.questions,
+            "has_attended": has_att if is_participant else None
+        }
+        response_data.append(a_dict)
+        
+    return response_data
 
 @router.post("/", response_model=AssessmentResponse)
 async def create_assessment(
@@ -54,6 +92,7 @@ async def read_assessment(
         select(Assessment)
         .options(selectinload(Assessment.questions))
         .where(Assessment.id == assessment_id)
+        .where(Assessment.organization_id == current_user.get("organization_id"))
     )
     assessment = result.scalars().first()
     if not assessment:

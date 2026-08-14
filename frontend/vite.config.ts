@@ -12,5 +12,27 @@ export default defineConfig({
   },
   optimizeDeps: {
     force: true
+  },
+  server: {
+    host: true,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        ws: true
+      }
+    }
+  },
+  preview: {
+    host: true,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        ws: true
+      }
+    }
   }
 })

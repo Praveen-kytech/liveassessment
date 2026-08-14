@@ -22,13 +22,13 @@ import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 
 const chartData = [
-  { name: "Mon", participants: 120 },
-  { name: "Tue", participants: 210 },
-  { name: "Wed", participants: 180 },
-  { name: "Thu", participants: 290 },
-  { name: "Fri", participants: 340 },
-  { name: "Sat", participants: 150 },
-  { name: "Sun", participants: 400 },
+  { name: "Mon", participants: 0 },
+  { name: "Tue", participants: 0 },
+  { name: "Wed", participants: 0 },
+  { name: "Thu", participants: 0},
+  { name: "Fri", participants: 0 },
+  { name: "Sat", participants: 0 },
+  { name: "Sun", participants: 0},
 ]
 
 const upcomingColumns = [
@@ -64,6 +64,8 @@ export function DashboardView() {
 }
 
 function AdminDashboard() {
+  const navigate = useNavigate()
+  
   const { data: stats } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -106,10 +108,79 @@ function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Total Participants" value={stats?.totalParticipants || "0"} trend="+12.5%" icon={Users} />
+        <MetricCard title="Overall Participants" value={stats?.totalParticipants || "0"} trend="+12.5%" icon={Users} />
         <MetricCard title="Active Sessions" value={stats?.activeSessions || "0"} trend="+2" icon={Activity} />
         <MetricCard title="Completed Assessments" value={stats?.completedAssessments || "0"} trend="+18.2%" icon={CheckCircle} />
         <MetricCard title="Average Score" value={stats?.averageScore ? `${stats.averageScore.toFixed(1)}%` : "0%"} trend="-1.1%" icon={FileText} downTrend />
+      </div>
+
+         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4 shadow-soft">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-primary" />
+              Assessment Accuracy (Correct vs Wrong)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={assessmentStats || []} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                  <Bar 
+                    dataKey="correct" 
+                    name="Correct Answers" 
+                    stackId="a" 
+                    fill="#4FC3CF" 
+                    radius={[0, 0, 4, 4]} 
+                    onClick={(data: any) => {
+                      const payload = data?.payload || data?.activePayload?.[0]?.payload || data;
+                      if (payload?.latest_session_id) {
+                        navigate(`/sessions/${payload.latest_session_id}/results`);
+                      } else if (payload?.assessment_id) {
+                        navigate(`/results?assessment_id=${payload.assessment_id}`);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <Bar 
+                    dataKey="wrong" 
+                    name="Wrong Answers" 
+                    stackId="a" 
+                    fill="#D97A00" 
+                    radius={[4, 4, 0, 0]} 
+                    onClick={(data: any) => {
+                      const payload = data?.payload || data?.activePayload?.[0]?.payload || data;
+                      if (payload?.latest_session_id) {
+                        navigate(`/sessions/${payload.latest_session_id}/results`);
+                      } else if (payload?.assessment_id) {
+                        navigate(`/results?assessment_id=${payload.assessment_id}`);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        
+        
+        <Card className="col-span-3 shadow-soft">
+          <CardHeader>
+            <CardTitle>Assessments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable columns={upcomingColumns} data={upcoming || []} searchKey="name" />
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -143,50 +214,14 @@ function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-        
-        <Card className="col-span-3 shadow-soft">
-          <CardHeader>
-            <CardTitle>Upcoming Assessments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DataTable columns={upcomingColumns} data={upcoming || []} searchKey="name" />
-          </CardContent>
-        </Card>
-      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 shadow-soft">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-primary" />
-              Assessment Accuracy (Correct vs Wrong)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={assessmentStats || []} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} angle={-15} textAnchor="end" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-                    itemStyle={{ color: 'hsl(var(--foreground))' }}
-                  />
-                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                  <Bar dataKey="correct" name="Correct Answers" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} />
-                  <Bar dataKey="wrong" name="Wrong Answers" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+  
 
         <Card className="col-span-3 shadow-soft h-[420px] flex flex-col">
           <CardHeader className="shrink-0 border-b pb-4">
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-500" />
-              Recent Global Events
+              Recent Participants
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -208,7 +243,7 @@ function AdminDashboard() {
                           if (event.event_type === "ANSWER_SUBMITTED") {
                             return (
                               <div className="flex items-center gap-1.5 text-xs bg-muted/30 p-2 rounded-md">
-                                <span className="text-muted-foreground">Participant #{data.participant_id}</span>
+                                <span className="text-muted-foreground">{data.participant_name || `Participant #${data.participant_id}`}</span>
                                 <span className="text-muted-foreground">→</span>
                                 {data.is_correct ? (
                                   <span className="text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-[10px]">Correct Answer</span>

@@ -20,9 +20,12 @@ export function SignupPage() {
       const firstName = parts[0]
       const lastName = parts.length > 1 ? parts.slice(1).join(" ") : ""
 
-      const response = await fetch("http://localhost:8000/api/v1/auth/signup", {
+      const response = await fetch("/api/v1/auth/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        },
         body: JSON.stringify({ 
           email, 
           password, 
@@ -114,7 +117,7 @@ export function SignupPage() {
                 onChange={e => setRoleId(Number(e.target.value))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none bg-white"
               >
-                <option value={1}>Admin</option>
+                {/* <option value={1}>Admin</option> */}
                 <option value={2}>Participant</option>
               </select>
             </div>

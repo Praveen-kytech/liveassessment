@@ -32,3 +32,4 @@ class QuestionResponse(BaseModel):
 class AssessmentResponse(AssessmentBase, TimestampSchema):
     id: int
     questions: List[QuestionResponse] = []
+    has_attended: Optional[bool] = None

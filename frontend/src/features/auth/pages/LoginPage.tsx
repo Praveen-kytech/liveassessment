@@ -17,9 +17,12 @@ export function LoginPage() {
     setError("")
     
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const response = await fetch("/api/v1/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: { 
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Bypass-Tunnel-Reminder": "true"
+        },
         body: new URLSearchParams({ username: email, password: password })
       })
 
@@ -66,7 +69,7 @@ export function LoginPage() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none" 
-                placeholder="admin@example.com"
+                
               />
             </div>
             <div>
@@ -90,7 +93,7 @@ export function LoginPage() {
           
           <div className="mt-8 text-center">
             <p className="text-sm text-gray-500">
-              Don't have an account? <Link to="/signup" state={location.state} className="text-primary font-semibold hover:underline">Sign up for free</Link>
+              Don't have an account? <Link to="/signup" state={location.state} className="text-primary font-semibold hover:underline">Sign up </Link>
             </p>
           </div>
         </div>

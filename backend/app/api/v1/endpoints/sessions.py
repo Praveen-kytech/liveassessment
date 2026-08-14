@@ -7,6 +7,7 @@ from typing import List
 from app.api.deps import get_db
 from app.core.security import get_current_active_user
 from app.models.session import Session
+from app.models.assessment import Assessment
 from app.models.participant import Participant
 from app.schemas.session import SessionResponse, SessionCreate
 from app.schemas.participant import ParticipantResponse
@@ -24,6 +25,15 @@ async def create_session(
     # Only admins can create sessions (assuming role_id 1 is Admin)
     if current_user.get("role_id") != 1:
         raise HTTPException(status_code=403, detail="Not authorized to create sessions.")
+        
+    assessment_check = await db.execute(
+        select(Assessment).where(
+            Assessment.id == session_in.assessment_id,
+            Assessment.organization_id == current_user.get("organization_id")
+        )
+    )
+    if not assessment_check.scalars().first():
+        raise HTTPException(status_code=403, detail="Assessment not found or not authorized.")
         
     session = Session(
         assessment_id=session_in.assessment_id,
@@ -45,8 +55,13 @@ async def create_session(
 
     db.add(session)
     await db.commit()
-    await db.refresh(session)
-    return session
+    
+    result = await db.execute(
+        select(Session)
+        .options(selectinload(Session.assessment))
+        .where(Session.id == session.id)
+    )
+    return result.scalars().first()
 
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(
@@ -54,7 +69,13 @@ async def get_session(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
-    result = await db.execute(select(Session).where(Session.id == session_id))
+    result = await db.execute(
+        select(Session)
+        .options(selectinload(Session.assessment))
+        .join(Session.assessment)
+        .where(Session.id == session_id)
+        .where(Assessment.organization_id == current_user.get("organization_id"))
+    )
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -65,9 +86,13 @@ async def list_sessions(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_active_user)
 ):
-    # For now, return all sessions (in a real app, filter by org or role)
-    # Eager load the assessment to display assessment title if needed
-    result = await db.execute(select(Session).options(selectinload(Session.assessment)).order_by(Session.created_at.desc()))
+    result = await db.execute(
+        select(Session)
+        .options(selectinload(Session.assessment))
+        .join(Session.assessment)
+        .where(Assessment.organization_id == current_user.get("organization_id"))
+        .order_by(Session.created_at.desc())
+    )
     return result.scalars().all()
 
 @router.post("/{session_id}/checkin", response_model=ParticipantResponse)
@@ -113,7 +138,12 @@ async def end_session(
     if current_user.get("role_id") != 1:
         raise HTTPException(status_code=403, detail="Not authorized to end sessions.")
         
-    result = await db.execute(select(Session).where(Session.id == session_id))
+    result = await db.execute(
+        select(Session)
+        .join(Session.assessment)
+        .where(Session.id == session_id)
+        .where(Assessment.organization_id == current_user.get("organization_id"))
+    )
     session = result.scalars().first()
     
     if not session:

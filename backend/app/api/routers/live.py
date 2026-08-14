@@ -45,25 +45,23 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
     
     is_host = user and user.role_id == 1
 
-    participant = None
-    if not is_host:
-        # Fetch participant
-        result = await db.execute(select(Participant).where(
-            Participant.session_id == session_id,
-            Participant.user_id == user_id
-        ))
-        participant = result.scalars().first()
+    # Fetch participant (even for hosts so they can test)
+    result = await db.execute(select(Participant).where(
+        Participant.session_id == session_id,
+        Participant.user_id == user_id
+    ))
+    participant = result.scalars().first()
 
-        if not participant:
-            # Auto-enroll for easy testing since we don't have a registration flow yet
-            participant = Participant(
-                session_id=session_id,
-                user_id=user_id,
-                check_in_status='CHECKED_IN'
-            )
-            db.add(participant)
-            await db.commit()
-            await db.refresh(participant)
+    if not participant:
+        # Auto-enroll for easy testing since we don't have a registration flow yet
+        participant = Participant(
+            session_id=session_id,
+            user_id=user_id,
+            check_in_status='CHECKED_IN'
+        )
+        db.add(participant)
+        await db.commit()
+        await db.refresh(participant)
 
     await manager.connect(websocket, session_id)
     try:
@@ -95,12 +93,18 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
                             )
                             db.add(answer)
                             
+                            user_name = f"{user.first_name} {user.last_name}" if user else f"Participant #{participant.id}"
+                            
                             # 3. Add Event
                             event = SessionEvent(
                                 session_id=session_id,
                                 event_type="ANSWER_SUBMITTED",
                                 reference_id=question_id,
-                                metadata_json=json.dumps({"participant_id": participant.id, "is_correct": is_correct})
+                                metadata_json=json.dumps({
+                                    "participant_id": participant.id,
+                                    "participant_name": user_name,
+                                    "is_correct": is_correct
+                                })
                             )
                             db.add(event)
                             
@@ -111,11 +115,24 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int, db: AsyncSes
                                 result_record = Result(session_id=session_id, participant_id=participant.id, score=0, is_passed=False)
                                 db.add(result_record)
                                 
+                            # Calculate pass status based on assessment passing_percentage
+                            from sqlalchemy import func
+                            from app.models.session import Session
+                            from app.models.assessment import Assessment
+                            
+                            sess_res = await db.execute(select(Session).where(Session.id == session_id))
+                            session_obj = sess_res.scalars().first()
+                            assess_res = await db.execute(select(Assessment).where(Assessment.id == session_obj.assessment_id))
+                            assessment_obj = assess_res.scalars().first()
+                            
+                            q_count_res = await db.execute(select(func.count(Question.id)).where(Question.assessment_id == assessment_obj.id))
+                            total_qs = q_count_res.scalar() or 1
+                            
                             if is_correct:
-                                # Simple scoring: 1 point per correct answer
                                 result_record.score += 1
-                                if result_record.score >= 5: # Assuming passing score is 5 for now
-                                    result_record.is_passed = True
+                                
+                            percentage = (result_record.score / total_qs) * 100
+                            result_record.is_passed = percentage >= assessment_obj.passing_percentage
                                     
                             await db.commit()
                             

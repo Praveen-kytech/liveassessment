@@ -1,6 +1,6 @@
 import React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Activity, CheckCircle, Clock } from "lucide-react"
 import { api } from "@/lib/api"
 import { DataTable } from "@/components/ui/DataTable"
@@ -8,13 +8,19 @@ import { DataTable } from "@/components/ui/DataTable"
 export function ResultsView() {
   const navigate = useNavigate()
   
+  const [searchParams] = useSearchParams()
+  const filterAssessmentId = searchParams.get('assessment_id')
+  
   const { data: sessions, isLoading } = useQuery({
     queryKey: ['all_sessions'],
     queryFn: () => api.get('/sessions/').then(res => res.data)
   })
 
   // Filter for completed sessions to show results
-  const completedSessions = sessions?.filter((s: any) => s.status === 'COMPLETED') || []
+  let completedSessions = sessions?.filter((s: any) => s.status === 'COMPLETED') || []
+  if (filterAssessmentId) {
+    completedSessions = completedSessions.filter((s: any) => s.assessment_id.toString() === filterAssessmentId)
+  }
 
   const columns = [
     {
@@ -24,8 +30,8 @@ export function ResultsView() {
     },
     {
       accessorKey: "assessment_id",
-      header: "Assessment ID",
-      cell: ({ row }: any) => <div>{row.original.assessment_id}</div>
+      header: "Assessment Topic",
+      cell: ({ row }: any) => <div>{row.original.assessment?.title || `ID: ${row.original.assessment_id}`}</div>
     },
     {
       accessorKey: "status",

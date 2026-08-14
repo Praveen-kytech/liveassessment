@@ -164,16 +164,16 @@ export function AssessmentBuilderPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-muted/20 pb-20">
+    <div className="flex flex-col min-h-[calc(100vh-4rem)] pb-20">
       {/* Header */}
-      <div className="bg-white border-b px-8 py-6 sticky top-0 z-10 flex items-center justify-between shadow-sm">
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Assessment Builder</h1>
-            <p className="text-sm text-muted-foreground">Create a new live assessment</p>
+            <h1 className="text-3xl font-bold tracking-tight">Assessment Builder</h1>
+            <p className="text-muted-foreground mt-2">Create a new live assessment</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ export function AssessmentBuilderPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto w-full mt-8 space-y-8 px-4">
+      <div className="max-w-4xl w-full space-y-8">
         {/* Assessment Details */}
         <Card className="border-primary/20 shadow-md bg-white/50 backdrop-blur-sm">
           <CardHeader>

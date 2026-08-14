@@ -13,3 +13,8 @@ class ParticipantCreate(ParticipantBase):
 
 class ParticipantResponse(ParticipantBase, TimestampSchema):
     id: int
+
+class ParticipantDetail(ParticipantResponse):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    session: Optional[str] = None

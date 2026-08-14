@@ -45,6 +45,6 @@ async def login(db: AsyncSession = Depends(get_db), form_data: OAuth2PasswordReq
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email, "role_id": user.role_id}
+        data={"sub": str(user.id), "email": user.email, "role_id": user.role_id, "organization_id": user.organization_id}
     )
-    return {"access_token": access_token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role_id": user.role_id}}
+    return {"access_token": access_token, "token_type": "bearer", "user": {"id": user.id, "email": user.email, "role_id": user.role_id, "organization_id": user.organization_id, "first_name": user.first_name, "last_name": user.last_name}}

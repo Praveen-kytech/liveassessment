@@ -27,7 +27,7 @@ export function ParticipantsView() {
     },
     {
       accessorKey: "session",
-      header: "Enrolled Session",
+      header: "Assessment",
     },
     {
       accessorKey: "status",

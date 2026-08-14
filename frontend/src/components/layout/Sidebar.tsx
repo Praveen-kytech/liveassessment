@@ -1,12 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { LayoutDashboard, Users, Settings, Activity, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Settings, Activity, LogOut, Medal, Award } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/features/auth/hooks/authStore"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: [1, 2] },
   { name: "Assessments", href: "/assessments", icon: Activity, roles: [1, 2] },
-  // { name: "Results", href: "/results", icon: Activity, roles: [1] },
+  { name: "Results", href: "/results", icon: Award, roles: [1] },
   { name: "Participants", href: "/participants", icon: Users, roles: [1] },
   { name: "Settings", href: "/settings", icon: Settings, roles: [1] },
   

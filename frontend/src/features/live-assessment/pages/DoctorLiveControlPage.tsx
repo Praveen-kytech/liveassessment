@@ -28,6 +28,15 @@ export function DoctorLiveControlPage() {
     refetchInterval: 5000 // Poll every 5s for live updates
   });
 
+  useEffect(() => {
+    if (analytics?.answer_stats) {
+      setAnswerStats(prev => {
+        // Only update if not already handled by WS to avoid flicker
+        return { ...analytics.answer_stats, ...prev };
+      });
+    }
+  }, [analytics?.answer_stats]);
+
   const navigate = useNavigate()
   const [alerts, setAlerts] = useState<AlertEvent[]>([])
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null)
@@ -57,8 +66,8 @@ export function DoctorLiveControlPage() {
   useEffect(() => {
     if (!id || !token) return;
 
-    // Connect to WebSocket
-    const wsUrl = `ws://localhost:8000/api/live/ws/session/${id}?token=${token}`
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/live/ws/session/${id}?token=${token}`
     ws.current = new WebSocket(wsUrl)
 
     ws.current.onmessage = (event) => {
@@ -110,8 +119,10 @@ export function DoctorLiveControlPage() {
 
   const releaseQuestion = async (qNumber: number) => {
     try {
-      // Use axios directly with the full URL because the live router is mounted at /api/live, not /api/v1
-      await api.post(`http://localhost:8000/api/live/session/${id}/release-question/${qNumber}`)
+      await fetch(`/api/live/session/${id}/release-question/${qNumber}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
       setActiveQuestion(qNumber)
     } catch (err) {
       console.error("Failed to release question:", err)
@@ -156,7 +167,10 @@ export function DoctorLiveControlPage() {
         assessment_id: session.assessment_id,
         order: 1
       })
-      await api.post(`http://localhost:8000/api/live/session/${id}/release-question/${question.id}`)
+      await fetch(`/api/live/session/${id}/release-question/${question.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
       setNewQuestionText("")
     } catch (error) {
       console.error("Failed to create question", error)
@@ -381,7 +395,7 @@ export function DoctorLiveControlPage() {
                 <Card className="border-primary/20 shadow-md">
                   <CardHeader className="bg-muted/30 pb-4 border-b">
                     <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-blue-500" /> Event Timeline
+                      <Clock className="h-5 w-5 text-blue-500" /> Live Updates
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 max-h-[300px] overflow-y-auto space-y-4">
@@ -400,7 +414,7 @@ export function DoctorLiveControlPage() {
                                   if (event.event_type === "ANSWER_SUBMITTED") {
                                     return (
                                       <div className="flex items-center gap-1.5 text-xs">
-                                        <span className="text-muted-foreground">Participant #{data.participant_id}</span>
+                                        <span className="text-muted-foreground">{data.participant_name || `Participant #${data.participant_id}`}</span>
                                         <span className="text-muted-foreground">→</span>
                                         {data.is_correct ? (
                                           <span className="text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded border border-green-200 text-[10px]">Correct</span>

@@ -41,7 +41,8 @@ export function ParticipantLiveAssessmentPage() {
   // WebSocket Connection
   useEffect(() => {
     if (!id || !token) return;
-    const wsUrl = `ws://localhost:8000/api/live/ws/session/${id}?token=${token}`
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/live/ws/session/${id}?token=${token}`
     ws.current = new WebSocket(wsUrl)
     
     ws.current.onmessage = (event) => {

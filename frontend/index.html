@@ -7,6 +7,22 @@
     <title>Tihvo Meet</title>
   </head>
   <body>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        document.body.innerHTML += '<div style="color:red; padding:20px; font-family:monospace; z-index:9999; position:absolute; top:0; background:white;">' + 
+          '<h3>Error:</h3>' + message + '<br>' + source + ':' + lineno + '<br><pre>' + (error && error.stack) + '</pre></div>';
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        document.body.innerHTML += '<div style="color:red; padding:20px; font-family:monospace; z-index:9999; position:absolute; top:0; background:white;">' + 
+          '<h3>Unhandled Promise Rejection:</h3>' + event.reason + '</div>';
+      });
+      window.addEventListener('error', function(event) {
+        if (event.target && event.target.src) {
+          document.body.innerHTML += '<div style="color:red; padding:20px; font-family:monospace; z-index:9999; position:absolute; top:0; background:white;">' + 
+            '<h3>Resource Load Error:</h3>Failed to load script: ' + event.target.src + '</div>';
+        }
+      }, true);
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
